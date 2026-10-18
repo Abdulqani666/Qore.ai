@@ -141,6 +141,7 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
    <div class="f"><label for="t2">Line 2 (subject or exam)</label><input type="text" id="t2"></div>
    <div class="f"><label for="t3">Line 3 (term or date)</label><input type="text" id="t3"></div>
    <label class="chk"><input type="checkbox" id="lg"> Show logo on the left</label>
+   <label class="chk"><input type="checkbox" id="rm"> Remove the old logo and banner from my file first</label>
    <label class="chk"><input type="checkbox" id="wm"> Faded logo watermark on every page</label>
    <div style="display:flex;gap:12px;align-items:center"><img id="lgimg" alt="Logo preview" style="width:52px;height:auto"><button class="btn" id="lgbtn">Change logo</button><input type="file" id="lgpick" accept="image/png,image/jpeg" hidden></div>
    <p class="note">Use this only on documents that do not already have a title.</p>
@@ -183,10 +184,10 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
 const W="http://schemas.openxmlformats.org/wordprocessingml/2006/main",R="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const NS=`xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"`;
 const $=id=>document.getElementById(id);
-const IDS=["wm","i4","gi","gitext","font","size","force","bw","tight","caps","num","bands","tbl","tb","t1","t2","t3","lg","ib","ic","im","it","mt","ml","border","ft","pn","pos","fline"];
+const IDS=["rm","wm","i4","gi","gitext","font","size","force","bw","tight","caps","num","bands","tbl","tb","t1","t2","t3","lg","ib","ic","im","it","mt","ml","border","ft","pn","pos","fline"];
 const PRE={
-exam:{font:"Verdana",size:10,force:false,bw:true,tight:true,caps:"headings",num:"none",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"MONTHLY EXAMINATION",lg:true,wm:true,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:true,ic:"",im:"",it:"",mt:15,ml:18,border:false,ft:"EXAMINATION BOARD",pn:"x",pos:"right",fline:true},
-plain:{font:"Times New Roman",size:12,force:false,bw:false,tight:false,caps:"none",num:"none",bands:false,tbl:false,tb:false,t1:"",t2:"",t3:"",lg:false,wm:false,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:false,ic:"",im:"",it:"",mt:25,ml:25,border:false,ft:"",pn:"n",pos:"center",fline:false}};
+exam:{rm:true,font:"Verdana",size:10,force:false,bw:true,tight:true,caps:"headings",num:"none",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"MONTHLY EXAMINATION",lg:true,wm:true,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:true,ic:"",im:"",it:"",mt:15,ml:18,border:false,ft:"EXAMINATION BOARD",pn:"x",pos:"right",fline:true},
+plain:{rm:false,font:"Times New Roman",size:12,force:false,bw:false,tight:false,caps:"none",num:"none",bands:false,tbl:false,tb:false,t1:"",t2:"",t3:"",lg:false,wm:false,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:false,ic:"",im:"",it:"",mt:25,ml:25,border:false,ft:"",pn:"n",pos:"center",fline:false}};
 const get=()=>Object.fromEntries(IDS.map(i=>[i,$(i).type==="checkbox"?$(i).checked:$(i).value]));
 const put=o=>IDS.forEach(i=>{if(!(i in o))return;$(i).type==="checkbox"?$(i).checked=!!o[i]:$(i).value=o[i]});
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -477,12 +478,34 @@ async function build(o){
 
  /* title block and student box (inserted last so they are not restyled) */
  const use=o.lg&&logo,ins=[];
- const lead=paras.filter(p=>!inTable(p)).slice(0,3);
- let banner=lead.some(p=>qa(p,"drawing").length||qa(p,"pict").length);
- if(!banner){for(const f of Object.keys(zip.files)){if(/^word\/header\d*\.xml$/.test(f)){const x=await zip.file(f).async("string");if(/<w:drawing|<w:pict/.test(x)){banner=true;break}}}}
- const first8=paras.filter(p=>!inTable(p)&&text(p).trim()).slice(0,8).map(text).join("\n");
+ let removed=0;
+ if(o.rm){
+  const WP="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing";
+  const hasPic=r=>qa(r,"drawing").length||qa(r,"pict").length;
+  const wide=r=>qa(r,"pict").length>0||qa(r,"drawing").some(d=>{if(d.getElementsByTagNameNS(WP,"anchor")[0])return true;const e=d.getElementsByTagNameNS(WP,"extent")[0];return e&&+e.getAttribute("cx")>2743200});
+  /* an old title table that holds a logo, at the very top */
+  const firstEl=Array.from(body.children).find(c=>c.localName!=="sectPr"&&!(c.localName==="p"&&!text(c).trim()&&!hasPic(c)));
+  if(firstEl&&firstEl.localName==="tbl"&&qa(firstEl,"tr").length<=2&&qa(firstEl,"r").some(hasPic)){
+   let nx=firstEl.nextElementSibling;firstEl.remove();removed++;
+   if(nx&&nx.localName==="p"&&!text(nx).trim()&&!hasPic(nx)&&qa(nx,"pBdr").length)nx.remove();
+  }
+  /* banner or logo pictures in the first lines */
+  paras.filter(p=>p.isConnected&&!inTable(p)).slice(0,3).forEach(p=>{
+   qa(p,"r").filter(r=>hasPic(r)&&wide(r)).forEach(r=>{r.remove();removed++});
+   if(!text(p).trim()&&!hasPic(p)&&!qa(p,"sectPr").length&&p.parentNode===body&&p.parentNode&&removed)p.remove()});
+  /* logos and watermarks inside headers */
+  const hfiles=Object.keys(zip.files).filter(f=>/^word\/header\d*\.xml$/.test(f));
+  let allEmpty=hfiles.length>0;
+  for(const f of hfiles){
+   const hd=P.parseFromString(await zip.file(f).async("string"),"application/xml");let n=0;
+   qa(hd,"r").filter(hasPic).forEach(r=>{r.remove();n++});removed+=n;
+   if(n)zip.file(f,S.serializeToString(hd));
+   if(qa(hd,"t").some(x=>x.textContent.trim()))allEmpty=false}
+  if(allEmpty)secs.forEach(sp=>qa(sp,"headerReference").forEach(h=>h.remove()));
+  if(removed)log.push(["Old logo","removed from your file ("+removed+")"]);
+ }
+ const first8=paras.filter(p=>p.isConnected&&text(p).trim()).slice(0,25).map(text).join("\n");
  const hasInfo=/(^|\n)\s*(magaca|name|student|date|class|grade|fasalka|taariikh)\b/i.test(first8);
- if(banner&&o.tb){o.tb=false;log.push(["Title block","skipped, your document already has a school banner"])}
  if(hasInfo&&o.ib){o.ib=false;log.push(["Student box","skipped, your document already has Name and Date lines"])}
  let mediaDone=false;
  const putLogo=async()=>{
