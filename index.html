@@ -275,11 +275,14 @@ function isHeading(p){
  return runs.length>0&&runs.every(isBold)}
 const inTable=n=>{for(;n;n=n.parentNode)if(n.localName==="tbl")return true;return false};
 const text=p=>qa(p,"t").map(t=>t.textContent).join("");
+const KW=/^\s*(part|qaybta|qaybaha|qiimaynta|section)\s+[\w\u00C0-\u024F]+/i;
+let useKW=false;
 function isBand(p){
  if(inTable(p))return false;
  const t=text(p).trim();if(!t||t.length>60)return false;
+ if(useKW)return KW.test(t)&&isHeading(p);
  const ps=qa(p,"pStyle")[0];
- if(/^part\s+[a-z0-9]+\b/i.test(t))return true;
+ if(KW.test(t))return true;
  return isHeading(p)&&t===t.toUpperCase()&&/[A-Z]/.test(t)&&t.length<=40}
 const frag=(d,xml)=>{const r=new DOMParser().parseFromString(`<root ${NS}>${xml}</root>`,"application/xml");if(r.getElementsByTagName("parsererror").length)throw new Error("Internal layout error");return Array.from(r.documentElement.childNodes).map(n=>d.importNode(n,true))};
 const rfx=f=>`<w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:eastAsia="${f}" w:cs="${f}"/>`;
@@ -384,13 +387,15 @@ async function build(o){
  }
 
  /* capitals, numbering, part bars */
- const paras=qa(doc,"p");let caps=0,nums=0,n=0,bars=0;
- const barSz=String(Math.round((o.size+1)*2));
+ const paras=qa(doc,"p");
+ useKW=paras.some(p=>!inTable(p)&&KW.test(text(p))&&isHeading(p)&&text(p).trim().length<=60);
+ let caps=0,nums=0,n=0,bars=0;
+ const barSz=String(Math.round((o.size+2)*2));
  paras.forEach(p=>{
   const ts=qa(p,"t");if(!ts.some(t=>t.textContent.trim()))return;
   const band=o.bands&&isBand(p);
   const h=isHeading(p);
-  if(band||o.caps==="all"||(o.caps==="headings"&&h)){ts.forEach(t=>t.textContent=t.textContent.toUpperCase());caps++}
+  if(band||o.caps==="all"||(o.caps==="headings"&&h)){ts.forEach(t=>{const r=t.parentNode,va=r&&qa(r,"vertAlign")[0];if(!(va&&attr(va,"val")==="superscript"))t.textContent=t.textContent.toUpperCase()});caps++}
   const want=o.num==="headings"?h:o.num==="paras"?!inTable(p):false;
   if(want&&!band&&!qa(p,"numPr").length&&!/^\s*(\d+|[A-Za-z])[.)]\s/.test(text(p))){
    n++;const t=ts.find(x=>x.textContent.length)||ts[0];
@@ -408,8 +413,10 @@ async function build(o){
    pp.appendChild(mk(doc,"jc",{val:"left"}));
    p.insertBefore(pp,p.firstChild);
    qa(p,"r").forEach(r=>{
+    const va=qa(r,"vertAlign")[0],vv=va&&attr(va,"val");
     qa(r,"rPr").forEach(e=>e.remove());
     const rp=mk(doc,"rPr");rp.appendChild(mk(doc,"b"));rp.appendChild(mk(doc,"bCs"));rp.appendChild(mk(doc,"color",{val:"FFFFFF"}));rp.appendChild(mk(doc,"sz",{val:barSz}));rp.appendChild(mk(doc,"szCs",{val:barSz}));
+    if(vv)rp.appendChild(mk(doc,"vertAlign",{val:vv}));
     r.insertBefore(rp,r.firstChild)});
    bars++}
  });
@@ -455,6 +462,13 @@ async function build(o){
 
  /* title block and student box (inserted last so they are not restyled) */
  const use=o.lg&&logo,ins=[];
+ const lead=paras.filter(p=>!inTable(p)).slice(0,3);
+ let banner=lead.some(p=>qa(p,"drawing").length||qa(p,"pict").length);
+ if(!banner){for(const f of Object.keys(zip.files)){if(/^word\/header\d*\.xml$/.test(f)){const x=await zip.file(f).async("string");if(/<w:drawing|<w:pict/.test(x)){banner=true;break}}}}
+ const first8=paras.filter(p=>!inTable(p)&&text(p).trim()).slice(0,8).map(text).join("\n");
+ const hasInfo=/(^|\n)\s*(magaca|name|student|date|class|grade|fasalka|taariikh)\b/i.test(first8);
+ if(banner&&o.tb){o.tb=false;log.push(["Title block","skipped, your document already has a school banner"])}
+ if(hasInfo&&o.ib){o.ib=false;log.push(["Student box","skipped, your document already has Name and Date lines"])}
  if(o.tb&&(o.t1||o.t2||o.t3||use)){
   if(use){
    zip.file("word/media/fmtlogo."+logo.ext,logo.bytes);
