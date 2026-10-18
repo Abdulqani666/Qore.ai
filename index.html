@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Docx Formatter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{--bg:#eceff3;--panel:#fff;--ink:#14202b;--mute:#5a6978;--line:#d3dae1;--accent:#0b6e6e;--accent-ink:#fff;--soft:#e3f1f0;--bad:#b3261e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f161d;--panel:#18222c;--ink:#e8edf2;--mute:#97a6b4;--line:#2b3947;--accent:#4fb8b2;--accent-ink:#06201f;--soft:#14302f;--bad:#f2928b}}
+:root[data-theme="dark"]{--bg:#0f161d;--panel:#18222c;--ink:#e8edf2;--mute:#97a6b4;--line:#2b3947;--accent:#4fb8b2;--accent-ink:#06201f;--soft:#14302f;--bad:#f2928b}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 18px 48px}
+h1{font:600 26px/1.2 Georgia,"Times New Roman",serif;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 22px}
+.grid{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.card+.card{margin-top:14px}
+h2{font-size:16px;margin:0 0 12px;font-weight:600}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+.f{margin-bottom:12px}
+select,input[type=text],input[type=number]{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
+select:focus,input:focus,button:focus-visible,.drop:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chk{display:flex;gap:8px;align-items:center;margin:4px 0 10px;color:var(--ink);font-size:14px}
+.chk input{width:17px;height:17px;accent-color:var(--accent)}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px;border-radius:7px;font:inherit;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);width:100%;padding:12px;font-weight:600;font-size:16px}
+.primary:disabled{opacity:.45;cursor:not-allowed}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:26px 14px;text-align:center;cursor:pointer;color:var(--mute)}
+.drop.on,.drop:hover{border-color:var(--accent);background:var(--soft)}
+.drop b{display:block;color:var(--ink);font-size:16px;margin-bottom:2px}
+.file{margin-top:12px;font-weight:600;word-break:break-all}
+.side{position:sticky;top:14px}
+.log{margin:14px 0 0;padding:0;list-style:none;font-size:14px}
+.log li{padding:5px 0;border-top:1px solid var(--line);color:var(--mute)}
+.log li b{color:var(--ink)}
+.msg{margin-top:12px;font-size:14px}.err{color:var(--bad)}
+a.btn{display:block;text-align:center;text-decoration:none;margin-top:8px}
+.note{font-size:13px;color:var(--mute);margin:10px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Docx Formatter</h1>
+<p class="sub">Upload a finished Word document. It is formatted the way you choose. Your words are never rewritten.</p>
+<div class="grid">
+<div>
+<div class="card">
+<h2>Saved settings</h2>
+<div class="presets">
+<button class="btn" data-p="exam">School exam</button>
+<button class="btn" data-p="plain">Plain document</button>
+<button class="btn" id="mine">My saved</button>
+<button class="btn" id="save">Save current as mine</button>
+</div>
+<h2>Text</h2>
+<div class="row">
+<div class="f"><label for="font">Font</label><select id="font"><option>Verdana</option><option>Arial</option><option>Times New Roman</option><option>Calibri</option><option>Georgia</option><option>Tahoma</option></select></div>
+<div class="f"><label for="size">Size (pt)</label><input type="number" id="size" min="8" max="24" step="0.5"></div>
+</div>
+<label class="chk"><input type="checkbox" id="force"> Use this size on every line, including titles</label>
+<div class="f"><label for="caps">Capital letters</label><select id="caps"><option value="none">Leave as written</option><option value="headings">Headings and bold lines</option><option value="all">All text</option></select></div>
+<div class="f"><label for="num">Numbering</label><select id="num"><option value="none">None</option><option value="headings">Number headings and bold lines</option><option value="paras">Number every paragraph outside tables</option></select></div>
+</div>
+<div class="card">
+<h2>Title block</h2>
+<label class="chk"><input type="checkbox" id="tb"> Add a title block at the top of the document</label>
+<div class="f"><label for="t1">Line 1 (school name)</label><input type="text" id="t1"></div>
+<div class="f"><label for="t2">Line 2 (subject or exam)</label><input type="text" id="t2"></div>
+<div class="f"><label for="t3">Line 3 (term or date)</label><input type="text" id="t3"></div>
+<label class="chk"><input type="checkbox" id="lg"> Show logo on the left</label>
+<div style="display:flex;gap:12px;align-items:center"><img id="lgimg" alt="Logo preview" style="width:56px;height:auto"><button class="btn" id="lgbtn">Change logo</button><input type="file" id="lgpick" accept="image/png,image/jpeg" hidden></div>
+<p class="note">Use this only on documents that do not already have a title.</p>
+</div>
+<div class="card">
+<h2>Page</h2>
+<div class="row">
+<div class="f"><label for="mt">Top and bottom margin (mm)</label><input type="number" id="mt" min="5" max="50"></div>
+<div class="f"><label for="ml">Left and right margin (mm)</label><input type="number" id="ml" min="5" max="50"></div>
+</div>
+<label class="chk"><input type="checkbox" id="border"> Single-line border around every page</label>
+</div>
+<div class="card">
+<h2>Footer</h2>
+<div class="f"><label for="ft">Footer text (left side)</label><input type="text" id="ft" placeholder="Leave empty for no text"></div>
+<div class="row">
+<div class="f"><label for="pn">Page numbers</label><select id="pn"><option value="none">None</option><option value="n">1</option><option value="x">Page 1</option><option value="xofy">Page 1 of 4</option></select></div>
+<div class="f"><label for="pos">Number position</label><select id="pos"><option value="right">Right</option><option value="center">Center</option></select></div>
+</div>
+<p class="note">If the footer text is empty and page numbers are off, the existing footer is kept.</p>
+</div>
+</div>
+<div class="side">
+<div class="card">
+<h2>Your document</h2>
+<div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a Word file"><b>Drop a .docx file here</b>or tap to choose one</div>
+<input type="file" id="pick" accept=".docx" hidden>
+<div class="file" id="fname"></div>
+<button class="btn primary" id="go" style="margin-top:14px" disabled>Format document</button>
+<div class="msg" id="msg" role="status"></div>
+<ul class="log" id="log"></ul>
+</div>
+<div class="card" style="margin-top:14px"><h2>Publish this app</h2>
+<button class="btn" id="proj" style="width:100%">Download project files</button>
+<a class="btn" href="https://github.com/new" target="_blank" rel="noopener">Connect GitHub repository</a>
+<a class="btn" href="https://dashboard.render.com/select-repo?type=static" target="_blank" rel="noopener">Connect Render</a>
+<p class="note">Download the files, upload them to a new GitHub repository, then choose that repository on Render. Render hosts it as a static site.</p></div>
+<p class="note">Files are processed in your browser and are not uploaded anywhere.</p>
+</div>
+</div>
+</div>
+<script>
+const W="http://schemas.openxmlformats.org/wordprocessingml/2006/main",R="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+const $=id=>document.getElementById(id);
+const IDS=["font","size","force","caps","num","mt","ml","border","ft","pn","pos","tb","t1","t2","t3","lg"];
+const PRE={
+exam:{font:"Verdana",size:12,force:true,caps:"headings",num:"none",mt:20,ml:22,border:true,ft:"",pn:"xofy",pos:"right",tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"",lg:true},
+plain:{font:"Times New Roman",size:12,force:false,caps:"none",num:"none",mt:25,ml:25,border:false,ft:"",pn:"n",pos:"center",tb:false,t1:"",t2:"",t3:"",lg:false}};
+const get=()=>Object.fromEntries(IDS.map(i=>[i,$(i).type==="checkbox"?$(i).checked:$(i).value]));
+const put=o=>IDS.forEach(i=>{if(!(i in o))return;$(i).type==="checkbox"?$(i).checked=!!o[i]:$(i).value=o[i]});
+put(PRE.exam);
+document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>put(PRE[b.dataset.p]));
+let mineStore=null;
+try{mineStore=JSON.parse(localStorage.getItem("fmt-mine")||"null")}catch(e){}
+$("save").onclick=()=>{mineStore=get();try{localStorage.setItem("fmt-mine",JSON.stringify(mineStore))}catch(e){}msg("Saved. Tap My saved to load it.")};
+$("mine").onclick=()=>mineStore?put(mineStore):msg("No saved settings yet. Set things up, then tap Save current as mine.",1);
+
+let logo=null;
+const DEF="data:image/jpeg;base64,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";
+function setLogo(url){return new Promise(ok=>{const im=new Image();im.onload=()=>{const b=atob(url.split(",")[1]),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);logo={bytes:u,w:im.naturalWidth,h:im.naturalHeight,ext:/^data:image\/png/.test(url)?"png":"jpeg"};$("lgimg").src=url;ok()};im.onerror=()=>ok();im.src=url})}
+let savedLogo=null;try{savedLogo=localStorage.getItem("fmt-logo")}catch(e){}
+setLogo(savedLogo||DEF);
+$("lgbtn").onclick=()=>$("lgpick").click();
+$("lgpick").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{setLogo(r.result);try{localStorage.setItem("fmt-logo",r.result)}catch(x){}};r.readAsDataURL(f)};
+async function saveFile(name,data){
+ let dl=null;try{dl=await claude.use("downloads")}catch(e){}
+ if(dl){try{await dl.save({filename:name,data});msg("Done. "+name+" is ready.")}catch(e){msg(e&&e.code==="declined"?"Save cancelled. Try again when ready.":"Could not save the file. Try again.",1)}return}
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data]));a.download=name;document.body.appendChild(a);a.click();a.remove();msg("Done. "+name+" was downloaded.")}
+$("proj").onclick=async()=>{
+ const c=document.documentElement.cloneNode(true);
+ ["log","msg","fname"].forEach(i=>{const e=c.querySelector("#"+i);if(e)e.textContent=""});
+ const z=new JSZip();
+ z.file("index.html","<!DOCTYPE html>\n"+c.outerHTML);
+ z.file("render.yaml","services:\n  - type: web\n    name: docx-formatter\n    runtime: static\n    buildCommand: echo \"No build needed\"\n    staticPublishPath: .\n");
+ z.file("README.md","# Docx Formatter\n\nA single-page tool that formats Word documents in the browser.\n\nHost: create a Static Site on Render from this repository. Publish directory: `.` and no build command.\n");
+ await saveFile("docx-formatter-project.zip",await z.generateAsync({type:"uint8array"}))};
+let file=null,buf=null;
+const msg=(t,bad)=>{$("msg").textContent=t;$("msg").className="msg"+(bad?" err":"")};
+async function load(f){
+ if(!f)return;
+ if(!/\.docx$/i.test(f.name)){msg("This tool needs a .docx file.",1);return}
+ file=f;buf=await f.arrayBuffer();$("fname").textContent=f.name;$("go").disabled=false;$("log").innerHTML="";msg("")}
+const drop=$("drop");
+drop.onclick=()=>$("pick").click();
+drop.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("pick").click()}};
+$("pick").onchange=e=>load(e.target.files[0]);
+["dragover","dragenter"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add("on")}));
+["dragleave","drop"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove("on")}));
+drop.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
+
+const qa=(n,t)=>Array.from(n.getElementsByTagNameNS(W,t));
+const mk=(d,t,a)=>{const e=d.createElementNS(W,"w:"+t);for(const k in a)e.setAttributeNS(W,"w:"+k,a[k]);return e};
+const attr=(e,k)=>e.getAttributeNS(W,k);
+const isBold=r=>{const b=qa(r,"b")[0];return b&&attr(b,"val")!=="0"&&attr(b,"val")!=="false"};
+function isHeading(p){
+ const ps=qa(p,"pStyle")[0];
+ if(ps&&/^(heading|title|subtitle)/i.test(attr(ps,"val")))return true;
+ const runs=qa(p,"r").filter(r=>qa(r,"t").some(t=>t.textContent.trim()));
+ return runs.length>0&&runs.every(isBold)}
+const inTable=n=>{for(;n;n=n.parentNode)if(n.localName==="tbl")return true;return false};
+const text=p=>qa(p,"t").map(t=>t.textContent).join("");
+
+function fieldRuns(rp,code){
+ const f=t=>`<w:r>${rp}<w:fldChar w:fldCharType="${t}"/></w:r>`;
+ return f("begin")+`<w:r>${rp}<w:instrText xml:space="preserve"> ${code} </w:instrText></w:r>`+f("separate")+`<w:r>${rp}<w:t>1</w:t></w:r>`+f("end")}
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function footerXml(o,tw){
+ const sz=Math.max(16,Math.round((o.size-2)*2)),f=esc(o.font);
+ const rp=`<w:rPr><w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:cs="${f}"/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
+ const t=s=>`<w:r>${rp}<w:t xml:space="preserve">${esc(s)}</w:t></w:r>`;
+ let num="";
+ if(o.pn==="n")num=fieldRuns(rp,"PAGE");
+ if(o.pn==="x")num=t("Page ")+fieldRuns(rp,"PAGE");
+ if(o.pn==="xofy")num=t("Page ")+fieldRuns(rp,"PAGE")+t(" of ")+fieldRuns(rp,"NUMPAGES");
+ const pos=o.pos==="center"?`<w:tab w:val="center" w:pos="${Math.round(tw/2)}"/>`:`<w:tab w:val="right" w:pos="${tw}"/>`;
+ const body=(o.ft?t(o.ft):"")+(num?`<w:r>${rp}<w:tab/></w:r>`+num:"");
+ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="${W}" xmlns:r="${R}"><w:p><w:pPr><w:tabs>${pos}</w:tabs></w:pPr>${body}</w:p></w:ftr>`}
+
+async function build(o){
+ const zip=await JSZip.loadAsync(buf),log=[],P=new DOMParser(),S=new XMLSerializer();
+ if(!zip.file("word/document.xml"))throw new Error("This file has no document body.");
+ const doc=P.parseFromString(await zip.file("word/document.xml").async("string"),"application/xml");
+ const half=String(Math.round(o.size*2));
+
+ // fonts and size: styles
+ const sf=zip.file("word/styles.xml");
+ if(sf){
+  const st=P.parseFromString(await sf.async("string"),"application/xml");
+  qa(st,"rFonts").forEach(e=>{while(e.attributes.length)e.removeAttributeNode(e.attributes[0]);["ascii","hAnsi","eastAsia","cs"].forEach(k=>e.setAttributeNS(W,"w:"+k,o.font))});
+  let dd=qa(st,"docDefaults")[0];
+  if(!dd){dd=mk(st,"docDefaults");st.documentElement.insertBefore(dd,st.documentElement.firstChild)}
+  let rd=qa(dd,"rPrDefault")[0];if(!rd){rd=mk(st,"rPrDefault");dd.insertBefore(rd,dd.firstChild)}
+  let rp=qa(rd,"rPr")[0];if(!rp){rp=mk(st,"rPr");rd.appendChild(rp)}
+  qa(rp,"rFonts").concat(qa(rp,"sz"),qa(rp,"szCs")).forEach(e=>e.remove());
+  const rf=mk(st,"rFonts");["ascii","hAnsi","eastAsia","cs"].forEach(k=>rf.setAttributeNS(W,"w:"+k,o.font));
+  rp.insertBefore(rf,rp.firstChild);rp.appendChild(mk(st,"sz",{val:half}));rp.appendChild(mk(st,"szCs",{val:half}));
+  qa(st,"style").forEach(s=>{
+   const keep=!o.force&&attr(s,"styleId")!=="Normal"&&!(s.getAttributeNS(W,"default")==="1");
+   if(!keep||attr(s,"styleId")==="Normal")qa(s,"sz").concat(qa(s,"szCs")).forEach(e=>e.remove())});
+  zip.file("word/styles.xml",S.serializeToString(st));
+ }
+ // fonts and size: runs
+ qa(doc,"rFonts").forEach(e=>e.remove());
+ if(o.force)qa(doc,"sz").concat(qa(doc,"szCs")).forEach(e=>{if(e.parentNode.localName==="rPr")e.remove()});
+ log.push(["Font",`${o.font}, ${o.size} pt${o.force?" on every line":""}`]);
+
+ // capitals and numbering
+ const paras=qa(doc,"p");let caps=0,nums=0,n=0;
+ paras.forEach(p=>{
+  const ts=qa(p,"t");if(!ts.some(t=>t.textContent.trim()))return;
+  const h=isHeading(p);
+  if(o.caps==="all"||(o.caps==="headings"&&h)){ts.forEach(t=>t.textContent=t.textContent.toUpperCase());caps++}
+  const want=o.num==="headings"?h:o.num==="paras"?!inTable(p):false;
+  if(want&&!qa(p,"numPr").length&&!/^\s*(\d+|[A-Za-z])[.)]\s/.test(text(p))){
+   n++;const t=ts.find(x=>x.textContent.length)||ts[0];
+   t.textContent=n+". "+t.textContent;t.setAttribute("xml:space","preserve");nums++}
+ });
+ if(o.caps!=="none")log.push(["Capitals",`${caps} paragraphs`]);
+ if(o.num!=="none")log.push(["Numbering",`${nums} paragraphs numbered`]);
+
+ // sections, margins, border, footer
+ const body=qa(doc,"body")[0];let secs=qa(doc,"sectPr");
+ if(!secs.some(s=>s.parentNode===body)){body.appendChild(mk(doc,"sectPr"));secs=qa(doc,"sectPr")}
+ const tw0=m=>Math.round(m*56.7),tm=tw0(o.mt),lm=tw0(o.ml);
+ const footerOn=!!o.ft||o.pn!=="none";
+ let width=11906;
+ secs.forEach(sp=>{
+  let sz=qa(sp,"pgSz")[0];
+  if(!sz){sz=mk(doc,"pgSz",{w:11906,h:16838});sp.insertBefore(sz,sp.firstChild)}
+  width=+attr(sz,"w")||11906;
+  qa(sp,"pgMar").concat(qa(sp,"pgBorders")).forEach(e=>e.remove());
+  const mar=mk(doc,"pgMar",{top:tm,right:lm,bottom:tm,left:lm,header:Math.min(708,Math.round(tm/2)),footer:Math.min(708,Math.round(tm/2)),gutter:0});
+  sz.after(mar);
+  let last=mar;
+  if(o.border){
+   const b=mk(doc,"pgBorders",{offsetFrom:"page"});
+   ["top","left","bottom","right"].forEach(e=>b.appendChild(mk(doc,e,{val:"single",sz:6,space:24,color:"000000"})));
+   mar.after(b);
+  }
+  if(footerOn){
+   qa(sp,"footerReference").forEach(e=>e.remove());qa(sp,"titlePg").forEach(e=>e.remove());
+   const fr=mk(doc,"footerReference",{type:"default"});fr.setAttributeNS(R,"r:id","rIdFmtFooter");
+   sp.insertBefore(fr,sp.firstChild);
+  }
+ });
+ log.push(["Page",`${o.mt} mm top and bottom, ${o.ml} mm sides${o.border?", page border":""}`]);
+ if(footerOn){
+  const tw=width-2*lm;
+  zip.file("word/footerFmt.xml",footerXml(o,tw));
+  const rf="word/_rels/document.xml.rels",rels=await zip.file(rf).async("string");
+  zip.file(rf,rels.replace("</Relationships>",`<Relationship Id="rIdFmtFooter" Type="${R}/footer" Target="footerFmt.xml"/></Relationships>`));
+  const cf="[Content_Types].xml",ct=await zip.file(cf).async("string");
+  zip.file(cf,ct.replace("</Types>",`<Override PartName="/word/footerFmt.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>`));
+  const pl={none:"",n:"1",x:"Page 1",xofy:"Page 1 of N"}[o.pn];
+  log.push(["Footer",[o.ft,pl&&pl+" ("+o.pos+")"].filter(Boolean).join(", ")]);
+ }
+ if(o.tb&&(o.t1||o.t2||o.t3||(o.lg&&logo))){
+  const tw=width-2*lm,use=o.lg&&logo,LW=use?1400:0,f=esc(o.font);
+  const none=["top","left","bottom","right","insideH","insideV"].map(e=>`<w:${e} w:val="nil"/>`).join("");
+  const line=(t,sz,b)=>t?`<w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:cs="${f}"/>${b?"<w:b/>":""}<w:sz w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${esc(t)}</w:t></w:r></w:p>`:"";
+  let c1="";
+  if(use){
+   const cx=685800,cy=Math.round(cx*logo.h/logo.w);
+   c1=`<w:tc><w:tcPr><w:tcW w:w="${LW}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="9001" name="Logo"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="logo"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdFmtLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"/></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p></w:tc>`;
+   zip.file("word/media/fmtlogo."+logo.ext,logo.bytes);
+   const rf="word/_rels/document.xml.rels",rels=await zip.file(rf).async("string");
+   zip.file(rf,rels.replace("</Relationships>",`<Relationship Id="rIdFmtLogo" Type="${R}/image" Target="media/fmtlogo.${logo.ext}"/></Relationships>`));
+   const cf="[Content_Types].xml",ct=await zip.file(cf).async("string");
+   if(!ct.includes(`Extension="${logo.ext}"`))zip.file(cf,ct.replace("</Types>",`<Default Extension="${logo.ext}" ContentType="image/${logo.ext}"/></Types>`));
+  }
+  const c2=`<w:tc><w:tcPr><w:tcW w:w="${tw-LW}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>${line(o.t1,30,1)+line(o.t2,26,1)+line(o.t3,22,0)||"<w:p/>"}</w:tc>`;
+  const xml=`<w:tbl xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>${none}</w:tblBorders></w:tblPr><w:tblGrid>${use?`<w:gridCol w:w="${LW}"/>`:""}<w:gridCol w:w="${tw-LW}"/></w:tblGrid><w:tr>${c1}${c2}</w:tr></w:tbl>`;
+  const tbl=doc.importNode(P.parseFromString(xml,"application/xml").documentElement,true);
+  body.insertBefore(tbl,body.firstChild);tbl.after(mk(doc,"p"));
+  log.push(["Title block",[use?"logo":"",o.t1].filter(Boolean).join(", ")||"added"]);
+ }
+ zip.file("word/document.xml",S.serializeToString(doc));
+ return{data:await zip.generateAsync({type:"uint8array",compression:"DEFLATE"}),log};
+}
+
+$("go").onclick=async()=>{
+ $("go").disabled=true;msg("Formatting...");$("log").innerHTML="";
+ try{
+  const{data,log}=await build(get());
+  $("log").innerHTML=log.map(l=>`<li><b>${l[0]}</b>: ${esc(l[1])}</li>`).join("");
+  const name=file.name.replace(/\.docx$/i,"")+"_formatted.docx";
+  await saveFile(name,data);
+ }catch(e){msg("Could not format this file: "+e.message,1)}
+ finally{$("go").disabled=false}
+};
+</script>
+</body>
+</html>
