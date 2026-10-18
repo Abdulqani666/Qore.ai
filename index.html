@@ -63,6 +63,41 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke
 .comp .ph{flex:1;text-align:left;border:0;background:none;padding:8px 2px;color:var(--mute);font-size:16px}
 .send{width:38px;height:38px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
 .fine{text-align:center;font-size:12px;color:var(--mute);margin:8px 0 0}
+/* commands */
+.pal{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:0 0 8px;max-height:230px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.pal[hidden]{display:none}
+.pal button{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;border:0;background:none;padding:9px 13px;border-bottom:1px solid var(--line)}
+.pal button:last-child{border-bottom:0}
+.pal button:hover,.pal button.hot{background:var(--soft)}
+.pal b{font:600 14.5px/1.2 ui-monospace,Menlo,Consolas,monospace;white-space:nowrap}
+.pal span{font-size:13px;color:var(--mute)}
+.tray{display:flex;gap:6px;flex-wrap:wrap}
+.tray:not(:empty){margin:0 0 8px}
+.tray .tg{display:inline-flex;gap:6px;align-items:center;background:var(--soft);border-radius:999px;padding:4px 6px 4px 11px;font-size:13px;max-width:100%}
+.tray .tg span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.tray .tg button{border:0;background:none;font-size:16px;line-height:1;padding:2px 6px;color:var(--mute)}
+.comp{align-items:flex-end}
+.comp textarea{flex:1;border:0;background:none;resize:none;padding:9px 2px;font-size:16px;line-height:1.4;max-height:140px;outline:none;min-width:0}
+.quick{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.quick .btn{font:500 13.5px ui-monospace,Menlo,Consolas,monospace;padding:6px 12px}
+.stp{font-size:14px;color:var(--mute);margin-top:2px}
+.src{font-size:12.5px;color:var(--mute);margin-top:10px;overflow-wrap:anywhere}
+.src a{color:inherit}
+.txt p{margin:0 0 10px;white-space:pre-wrap}
+.txt ul{margin:0 0 10px;padding-left:20px}
+.fix{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.fix input{width:18px;height:18px;margin-top:3px;accent-color:var(--accent);flex:none}
+.fix s{color:var(--bad)}
+.fix small{display:block;color:var(--mute);font-size:12.5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px}
+.gi{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12.5px;display:flex;flex-direction:column}
+.gi img{width:100%;height:110px;object-fit:cover;background:var(--soft)}
+.gi div{padding:7px 9px;color:var(--mute);overflow-wrap:anywhere}
+.gi b{display:block;color:var(--ink);font-weight:600;font-size:13px}
+.gi .acts{margin:0;padding:0 9px 9px}
+.gi .btn{padding:4px 10px;font-size:12.5px}
+.pw{display:flex;gap:8px;margin-top:8px}
+.pw input{flex:1}
 /* design sheet */
 #veil{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
 #veil.on{opacity:1;pointer-events:auto}
@@ -106,13 +141,15 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
    <button class="chip" data-p="plain" aria-pressed="false">Plain document</button>
    <button class="chip" id="mine" aria-pressed="false">My saved design</button>
   </div>
+  <div class="pal" id="pal" hidden></div>
+  <div class="tray" id="tray"></div>
   <div class="comp" id="comp">
-   <button class="plus" id="plus" aria-label="Attach a Word file"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-   <button class="ph" id="ph">Attach a Word file to format</button>
-   <button class="send" id="send" aria-label="Choose a file"><svg viewBox="0 0 24 24"><path d="M12 19V6M6 11l6-6 6 6"/></svg></button>
+   <button class="plus" id="plus" aria-label="Attach files"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+   <textarea id="ta" rows="1" placeholder="Type / for tasks, # to pick a model" aria-label="Message"></textarea>
+   <button class="send" id="send" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 19V6M6 11l6-6 6 6"/></svg></button>
   </div>
-  <input type="file" id="pick" accept=".docx" hidden>
-  <p class="fine">Your file is processed on this device. It is never uploaded.</p>
+  <input type="file" id="pick" accept=".docx,.pdf,.txt,.md,image/*" multiple hidden>
+  <p class="fine" id="fine"></p>
  </div>
 </div>
 
@@ -200,7 +237,8 @@ function say(html,who){const d=document.createElement("div");d.className="m "+(w
 const typing=()=>say('<span class="dots" aria-label="Working"><i></i><i></i><i></i></span>');
 const size=n=>n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
 const fcard=(name,sub,ext)=>`<div class="fc"><div class="badge">${ext}</div><div class="t"><b>${esc(name)}</b><span>${esc(sub)}</span></div></div>`;
-say("<p>Hello. Attach a finished Word document and I will put it in your design. I never change your words.</p><p>The design is the school exam style: logo and titles, student box, black part bars, ruled tables and a footer. Tap <b>Design</b> to change anything.</p>");
+say("<p>Hello. I am Qore. Type <b>/</b> to pick a task and <b>#</b> to pick which AI does it (Claude, ChatGPT or Gemini).</p><p>Attach a Word file and send it with no words to put it in your school design. I never change your words.</p><div class='quick'><button class='btn' data-q='/build_document '>/build_document</button><button class='btn' data-q='/formatter '>/formatter</button><button class='btn' data-q='/exam '>/exam</button><button class='btn' data-q='/images '>/images</button><button class='btn' data-q='/help'>/help</button></div>");
+document.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{ta.value=b.dataset.q;ta.focus();grow();palUpdate()});
 
 /* ---------- design choice ---------- */
 let mineStore=null;
@@ -241,32 +279,278 @@ async function toPdf(data){
 
 /* ---------- files ---------- */
 let file=null,buf=null,busy=false;
+/* ---------- server and commands ---------- */
+let SRV=null,access="";try{access=localStorage.getItem("qore-access")||""}catch(e){}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function api(path,opt={}){
+ const r=await fetch(path,{...opt,headers:{...(access?{"X-Access":access}:{}),...(opt.headers||{})}});
+ let j=null;try{j=await r.json()}catch(e){}
+ if(r.status===401)throw Object.assign(new Error((j&&j.error)||"Password needed."),{auth:true});
+ if(!r.ok)throw new Error((j&&j.error)||("Server error "+r.status));
+ return j}
+const anyModel=()=>!!SRV&&Object.values(SRV.models||{}).some(m=>m.on);
+async function loadStatus(){
+ try{SRV=await api("/api/status")}catch(e){SRV=null}
+ const f=$("fine");
+ if(!SRV)f.textContent="AI server not connected. Only /formatter works. Your file stays on this device.";
+ else if(SRV.locked&&!SRV.authed)f.textContent="Locked. Send an AI task and I will ask for the password.";
+ else if(!anyModel())f.textContent="No AI key is set yet. /formatter and /images work.";
+ else f.textContent="AI ready: "+Object.values(SRV.models).filter(m=>m.on).map(m=>m.label).join(", ")+". /formatter keeps your file on this device."}
+const ALIAS={build:"build_document",doc:"build_document",document:"build_document",format:"formatter",key:"answer_key",markscheme:"answer_key",scheme:"answer_key",image:"images",pics:"images",pictures:"images",summary:"summarize",proof:"proofread",edit:"revise",change:"revise",model:"models",test:"exam",lessonplan:"lesson"};
+const TALIAS={chatgpt:"gpt",openai:"gpt",google:"gemini",think:"deep",slow:"deep",quick:"fast",web:"search"};
+const TAGKEYS=["claude","gpt","gemini","deep","fast","search","nosearch","noai"];
+const TAGHELP={claude:"Use Claude",gpt:"Use ChatGPT",gemini:"Use Gemini",deep:"Biggest model, more thinking",fast:"Smallest, quickest model",search:"Search the web first",nosearch:"Do not search the web",noai:"Format without any AI"};
+const ORDER=["build_document","formatter","exam","answer_key","lesson","worksheet","translate","summarize","proofread","revise","ask","images","models"];
+const CMDS=()=>{const c=(SRV&&SRV.commands)||{formatter:{label:"Formatter",desc:"Put a Word file in your design."}};return ORDER.filter(k=>c[k]).map(k=>[k,c[k]])};
+function parse(s){
+ let cmd=null;const tags=[];
+ const m=s.match(/^\s*\/(\w+)/);
+ if(m){cmd=m[1].toLowerCase();cmd=ALIAS[cmd]||cmd;s=s.slice(m[0].length)}
+ s=s.replace(/(^|\s)#(\w+)/g,(a,sp,t)=>{t=t.toLowerCase();t=TALIAS[t]||t;if(TAGKEYS.includes(t)){if(!tags.includes(t))tags.push(t);return sp}return a});
+ return{cmd,tags,text:s.trim()}}
+
+/* palette */
+const ta=$("ta"),pal=$("pal");let palItems=[],palAt=0;
+function palShow(items,typed){if(items.length===1&&items[0][0].toLowerCase()===typed)items=[];palItems=items;palAt=0;pal.innerHTML="";if(!items.length){pal.hidden=true;return}
+ items.forEach((it,i)=>{const b=document.createElement("button");b.type="button";b.className=i?"":"hot";b.innerHTML=`<b>${esc(it[0])}</b><span>${esc(it[1])}</span>`;b.onmousedown=e=>{e.preventDefault();palPick(i)};pal.appendChild(b)});pal.hidden=false}
+function palPick(i){const it=palItems[i];if(!it)return;
+ if(it[0][0]==="/"){ta.value=it[0]+" "+ta.value.replace(/^\s*\/\w*\s*/,"")}
+ else{ta.value=ta.value.replace(/#\w*$/,it[0])+" "}
+ pal.hidden=true;ta.focus();grow()}
+function palUpdate(){const v=ta.value;
+ let m=v.match(/^\s*\/(\w*)$/);
+ if(m){const q=m[1].toLowerCase();palShow(CMDS().filter(([k])=>k.startsWith(q)||(ALIAS[q]===k)).map(([k,c])=>["/"+k,c.desc||c.label]),"/"+q);return}
+ m=v.match(/(?:^|\s)#(\w*)$/);
+ if(m){const q=m[1].toLowerCase();palShow(TAGKEYS.filter(t=>t.startsWith(q)).map(t=>["#"+t,TAGHELP[t]]),"#"+q);return}
+ pal.hidden=true;palItems=[]}
+function grow(){ta.style.height="auto";ta.style.height=Math.min(ta.scrollHeight,140)+"px"}
+ta.addEventListener("input",()=>{grow();palUpdate()});
+ta.addEventListener("keydown",e=>{
+ if(!pal.hidden&&(e.key==="Enter"||e.key==="Tab")&&!e.shiftKey){e.preventDefault();palPick(palAt);return}
+ if(!pal.hidden&&(e.key==="ArrowDown"||e.key==="ArrowUp")){e.preventDefault();palAt=(palAt+(e.key==="ArrowDown"?1:-1)+palItems.length)%palItems.length;[...pal.children].forEach((c,i)=>c.className=i===palAt?"hot":"");return}
+ if(e.key==="Escape"&&!pal.hidden){pal.hidden=true;return}
+ if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();send()}});
+
+/* attachments */
+let pending=[];
+function tray(){const t=$("tray");t.innerHTML="";pending.forEach((f,i)=>{const d=document.createElement("div");d.className="tg";d.innerHTML=`<span>${esc(f.name)}</span><button type="button" aria-label="Remove ${esc(f.name)}">&times;</button>`;d.querySelector("button").onclick=()=>{pending.splice(i,1);tray()};t.appendChild(d)})}
+function addFiles(list){for(const f of list){if(pending.length>=8)break;if(!/\.(docx|pdf|txt|md)$/i.test(f.name)&&!/^image\//.test(f.type)){say(`<p class="err">${esc(f.name)} cannot be used. Attach Word, PDF, text or a picture.</p>`);continue}pending.push(f)}tray();ta.focus()}
 const pick=$("pick");
-const choose=()=>pick.click();
-["plus","ph","send"].forEach(i=>$(i).onclick=choose);
-pick.onchange=e=>{const f=e.target.files[0];pick.value="";run(f)};
+$("plus").onclick=()=>pick.click();
+pick.onchange=e=>{addFiles(e.target.files);pick.value=""};
 ["dragover","dragenter"].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();$("comp").classList.add("on")}));
 ["dragleave","drop"].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();$("comp").classList.remove("on")}));
-document.addEventListener("drop",e=>run(e.dataTransfer.files[0]));
-async function run(f){
- if(!f||busy)return;
- if(!/\.docx$/i.test(f.name)){say(`<p class="err">${esc(f.name)} is not a .docx file. Please attach a Word file.</p>`);return}
- file=f;buf=await f.arrayBuffer();
- say(fcard(f.name,size(f.size),"DOCX"),"u");
- await format()}
-async function format(){
+document.addEventListener("drop",e=>addFiles(e.dataTransfer.files));
+$("send").onclick=()=>send();
+
+/* password */
+function askPass(){return new Promise(ok=>{
+ const b=say(`<p>This app is locked. Enter the password to use AI tasks.</p><div class="pw"><input type="password" autocomplete="current-password" aria-label="Password"><button class="btn pri" type="button">Unlock</button></div><p class="err" hidden></p>`);
+ const inp=b.querySelector("input"),btn=b.querySelector("button"),er=b.querySelector(".err");inp.focus();
+ const go=async()=>{access=inp.value;await loadStatus();if(SRV&&SRV.authed){try{localStorage.setItem("qore-access",access)}catch(e){}b.innerHTML="<p>Unlocked.</p>";ok(true)}else{access="";er.textContent="Wrong password.";er.hidden=false}};
+ btn.onclick=go;inp.onkeydown=e=>{if(e.key==="Enter")go()}})}
+async function ensureAI(){
+ if(!SRV)await loadStatus();
+ if(!SRV){say("<p>The AI server is not connected. This page is running without it, so only <b>/formatter</b> works.</p>");return false}
+ if(SRV.locked&&!SRV.authed)await askPass();
+ if(!anyModel()){say("<p>No AI key is set yet. In Render, add <b>ANTHROPIC_API_KEY</b>, <b>OPENAI_API_KEY</b> or <b>GEMINI_API_KEY</b>, then reload.</p>");return false}
+ return true}
+
+/* jobs */
+function working(t,steps){const last=steps&&steps.length?steps[steps.length-1]:"Working...";t.innerHTML=`<span class="dots" aria-label="Working"><i></i><i></i><i></i></span><div class="stp">${esc(last)}</div>`}
+async function runJob(fd,bubble,limit=900000){
+ const{job}=await api("/api/run",{method:"POST",body:fd});
+ return await poll(job,bubble,limit)}
+async function poll(job,bubble,limit=900000){
+ const t0=Date.now();let bad=0;
+ for(;;){
+  await sleep(1500);let j;
+  try{j=await api("/api/job/"+job);bad=0}catch(e){if(e.auth||++bad>6||/gone/.test(e.message))throw e;continue}
+  if(bubble)working(bubble,j.steps);
+  if(j.state==="done")return j.result;
+  if(j.state==="error"||j.state==="lost")throw new Error(j.error||"The task failed.");
+  if(Date.now()-t0>limit)throw new Error("This is taking too long. Try again or use #fast.")}}
+
+/* ---------- markdown to Word ---------- */
+const xe=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+async function mdToDocx(md){
+ const meta={};
+ let L=md.replace(/\r/g,"").replace(/^\s*```\w*\n?/,"").replace(/\n?```\s*$/,"").split("\n"),i=0;
+ for(;i<L.length;i++){const m=L[i].match(/^@(title|subtitle|class|marks):\s*(.*)$/i);if(m)meta[m[1].toLowerCase()]=m[2].trim();else if(L[i].trim()==="")continue;else break}
+ L=L.slice(i);
+ const runs=(s,bold)=>s.split("**").map((g,k)=>[g,k%2===1||bold]).filter(x=>x[0]).map(([g,b])=>`<w:r>${b?"<w:rPr><w:b/></w:rPr>":""}<w:t xml:space="preserve">${xe(g)}</w:t></w:r>`).join("");
+ const para=(s,o={})=>`<w:p><w:pPr>${o.keep?"<w:keepNext/>":""}<w:spacing w:before="${o.b||0}" w:after="${o.a==null?80:o.a}"/>${o.ind?`<w:ind w:left="${o.ind}" w:hanging="${o.hang||0}"/>`:""}</w:pPr>${runs(s,o.bold)}</w:p>`;
+ let x="";
+ for(let k=0;k<L.length;k++){
+  const s=L[k].replace(/\s+$/,"");if(!s.trim())continue;
+  if(/^\s*\|/.test(s)){
+   const rows=[];for(;k<L.length&&/^\s*\|/.test(L[k]);k++){if(/^\s*\|?[\s:|-]+\|?\s*$/.test(L[k])&&/-/.test(L[k]))continue;rows.push(L[k].trim().replace(/^\||\|$/g,"").split("|").map(c=>c.trim()))}
+   k--;const n=Math.max(...rows.map(r=>r.length)),w=Math.floor(9000/n);
+   x+=`<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tblBorders></w:tblPr><w:tblGrid>${Array(n).fill(`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>`+rows.map((r,ri)=>`<w:tr>${Array.from({length:n},(_,c)=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/></w:tcPr>${para(r[c]||"",{a:40,bold:ri===0})}</w:tc>`).join("")}</w:tr>`).join("")+`</w:tbl>`+para("",{a:60});continue}
+  let m;
+  if((m=s.match(/^#{1,6}\s+(.*)$/)))x+=para(m[1].replace(/\*\*/g,""),{bold:1,b:140,a:80,keep:1});
+  else if(/^_{3,}$/.test(s.trim()))x+=para(s.trim(),{a:60});
+  else if(/^[A-D][.)]\s/.test(s.trim()))x+=para(s.trim(),{ind:720,hang:360,a:30});
+  else if((m=s.match(/^\s*[-*•]\s+(.*)$/)))x+=para("• "+m[1],{ind:720,hang:360,a:40});
+  else x+=para(s.trim(),/^\d+[.)]\s/.test(s.trim())?{b:60}:{});
+ }
+ const z=new JSZip();
+ z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`);
+ z.file("_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/officeDocument" Target="word/document.xml"/></Relationships>`);
+ z.file("word/_rels/document.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/styles" Target="styles.xml"/></Relationships>`);
+ z.file("word/styles.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:eastAsia="Verdana" w:cs="Verdana"/><w:sz w:val="20"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`);
+ z.file("word/document.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="${W}" xmlns:r="${R}"><w:body>${x}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`);
+ return{bytes:await z.generateAsync({type:"uint8array"}),meta}}
+async function buildFrom(bytes,o){const old=buf;buf=bytes;try{return await build(o)}finally{buf=old}}
+function designFor(cmd,meta){
+ const o=get(),examLike=["exam","answer_key","worksheet"].includes(cmd);
+ o.tb=true;o.rm=false;
+ o.t2=(meta.title||o.t2||"").toUpperCase();
+ if(meta.subtitle)o.t3=meta.subtitle.toUpperCase();else if(!examLike)o.t3="";
+ if(examLike&&cmd!=="answer_key"){if(meta.class)o.ic=meta.class;if(meta.marks)o.im=meta.marks}
+ else{o.ib=false;o.gi=false}
+ return o}
+const slug=s=>(s||"document").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,50)||"document";
+
+/* ---------- results ---------- */
+let lastDoc=null,hist=[];
+const lite=s=>{const h=esc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").split(/\n{2,}/).map(p=>{const ls=p.split("\n");if(ls.every(l=>/^\s*[-*•]\s+/.test(l)))return"<ul>"+ls.map(l=>"<li>"+l.replace(/^\s*[-*•]\s+/,"")+"</li>").join("")+"</ul>";return"<p>"+p+"</p>"}).join("");return'<div class="txt">'+h+"</div>"};
+const safeUrl=u=>/^https?:\/\//i.test(u||"")?u:"";
+function foot(r){
+ let h=`<p class="src">Made with ${esc(r.provider)} (${esc(r.model)}).${r.note?" "+esc(r.note):""}</p>`;
+ if(r.sources&&r.sources.length)h+=`<p class="src">Sources: `+r.sources.filter(s=>safeUrl(s.url)).map(s=>`<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")+`</p>`;
+ return h}
+async function docResult(r,t){
+ const{bytes,meta}=await mdToDocx(r.text);
+ const{data}=await buildFrom(bytes,designFor(r.cmd,meta));
+ const name=slug(meta.title||r.cmd)+".docx";
+ lastDoc={md:r.text,meta,cmd:r.cmd};
+ t.innerHTML=`<p>Your document is ready.</p>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Save as PDF</button><button class="btn" data-a="chg">Change it</button>${r.cmd==="exam"?'<button class="btn" data-a="key">Make marking scheme</button>':""}<button class="btn" data-a="txt">Show text</button></div>`+foot(r);
+ const q=a=>t.querySelector(`[data-a=${a}]`);
+ q("docx").onclick=()=>saveBytes(name,data,"application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+ q("pdf").onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{await toPdf(data)}catch(x){say(`<p class="err">Could not make the PDF: ${esc(x.message)}. Download the Word file instead.</p>`)}b.disabled=false};
+ q("chg").onclick=()=>{ta.value="/revise ";ta.focus()};
+ q("txt").onclick=()=>say(lite(r.text));
+ const k=q("key");if(k)k.onclick=()=>runAI("answer_key","Write the marking scheme for this exam:\n\n"+r.text,[],[]);
+ down()}
+function textResult(r,t){
+ t.innerHTML=lite(r.text)+`<div class="acts"><button class="btn" data-a="word">Make Word file</button><button class="btn" data-a="copy">Copy</button></div>`+foot(r);
+ t.querySelector("[data-a=copy]").onclick=async e=>{try{await navigator.clipboard.writeText(r.text);e.currentTarget.textContent="Copied"}catch(x){e.currentTarget.textContent="Copy failed"}};
+ t.querySelector("[data-a=word]").onclick=async e=>{const b=e.currentTarget;b.disabled=true;const bd=typing();try{await docResult({...r,cmd:"build_document",text:"@title: "+(r.cmd==="summarize"?"SUMMARY":"NOTES")+"\n\n"+r.text},bd)}catch(x){bd.innerHTML=`<p class="err">${esc(x.message)}</p>`}b.disabled=false};
+ down()}
+async function applyFixes(bytes,fixes){
+ const z=await JSZip.loadAsync(bytes),f=z.file("word/document.xml");if(!f)throw new Error("No document body.");
+ const d=new DOMParser().parseFromString(await f.async("string"),"application/xml");let n=0;
+ qa(d,"t").forEach(e=>{let s=e.textContent;fixes.forEach(x=>{if(x.find&&s.includes(x.find)){s=s.split(x.find).join(x.replace);n++}});if(s!==e.textContent){e.textContent=s;e.setAttributeNS("http://www.w3.org/XML/1998/namespace","xml:space","preserve")}});
+ z.file("word/document.xml",new XMLSerializer().serializeToString(d));
+ return{data:await z.generateAsync({type:"uint8array",compression:"DEFLATE"}),n}}
+function proofResult(r,t,src){
+ const fx=(Array.isArray(r.data)?r.data:[]).filter(x=>x&&x.find&&typeof x.replace==="string"&&x.find!==x.replace);
+ if(!fx.length){t.innerHTML="<p>I found no spelling or grammar mistakes.</p>"+foot(r);return}
+ t.innerHTML=`<p>I found ${fx.length} possible mistake${fx.length>1?"s":""}. Untick any you do not want.</p>`+fx.map((x,i)=>`<label class="fix"><input type="checkbox" checked data-i="${i}"><span><s>${esc(x.find)}</s> &rarr; <b>${esc(x.replace)}</b>${x.why?`<small>${esc(x.why)}</small>`:""}</span></label>`).join("")+`<div class="acts">${src?'<button class="btn pri" data-a="apply">Apply to my file</button>':'<span class="note">Attach a Word file with the task to apply the fixes to it.</span>'}</div>`+foot(r);
+ const b=t.querySelector("[data-a=apply]");
+ if(b)b.onclick=async()=>{const ch=[...t.querySelectorAll("input:checked")].map(i=>fx[+i.dataset.i]);b.disabled=true;
+  try{const{data,n}=await applyFixes(src.bytes,ch);saveBytes(src.name.replace(/\.docx$/i,"")+"_checked.docx",data,"application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+   say(`<p>Applied ${n} fix${n===1?"":"es"} and saved the file. Your design was not changed. Run <b>/formatter</b> on it if you want the school design.</p>`)}catch(x){say(`<p class="err">${esc(x.message)}</p>`)}b.disabled=false}}
+async function renderResult(r,t,ctx={}){
+ try{
+  if(r.kind==="doc")await docResult(r,t);
+  else if(r.cmd==="proofread")proofResult(r,t,ctx.src);
+  else textResult(r,t)
+ }catch(e){t.innerHTML=`<p class="err">I got the answer but could not build the file: ${esc(e.message)}</p>`+lite(r.text)}}
+
+/* ---------- running tasks ---------- */
+async function runAI(cmd,text,tags,files,ctx={}){
+ if(busy)return;
+ if(!await ensureAI())return;
+ if(cmd==="revise"&&!lastDoc&&!files.length){say("<p>Make or attach a document first, then ask for changes.</p>");return}
+ busy=true;const t=typing();working(t,["Sending..."]);
+ try{
+  const fd=new FormData();fd.append("cmd",cmd);fd.append("text",text);fd.append("tags",tags.join(","));
+  fd.append("history",JSON.stringify(hist.slice(-6)));
+  if(lastDoc)fd.append("prev_doc",lastDoc.md);
+  files.forEach(f=>fd.append("files",f));
+  const r=await runJob(fd,t);
+  if(r.kind==="text"){hist.push({role:"user",text:text.slice(0,4000)},{role:"assistant",text:r.text.slice(0,4000)})}
+  await renderResult(r,t,ctx);
+ }catch(e){
+  if(e.auth){access="";try{localStorage.removeItem("qore-access")}catch(x){}await loadStatus()}
+  t.innerHTML=`<p class="err">${esc(e.message)}</p>`
+ }finally{busy=false;down()}}
+async function docText(bytes,max){
+ try{const z=await JSZip.loadAsync(bytes),d=new DOMParser().parseFromString(await z.file("word/document.xml").async("string"),"application/xml");
+  return qa(d,"p").map(p=>qa(p,"t").map(x=>x.textContent).join("")).filter(s=>s.trim()).join("\n").slice(0,max)}catch(e){return""}}
+async function aiAssist(o,tags){
+ if(tags.includes("noai")||!SRV||!anyModel()||(SRV.locked&&!SRV.authed))return null;
+ if(o.t2&&o.ic&&o.im)return null;
+ try{
+  const txt=await docText(buf,1800);if(!txt)return null;
+  const fd=new FormData();fd.append("cmd","formatter");fd.append("text",txt);
+  fd.append("tags",tags.filter(x=>["claude","gpt","gemini","fast","deep"].includes(x)).join(","));
+  const r=await runJob(fd,null,30000),d=r&&r.data;
+  if(!d||typeof d!=="object"||Array.isArray(d))return null;
+  const got=[];
+  if(!o.t2&&d.title){o.t2=String(d.title).toUpperCase().slice(0,60);got.push("title")}
+  if(!o.ic&&d.class){o.ic=String(d.class).slice(0,12);got.push("class")}
+  if(!o.im&&d.marks){o.im=String(d.marks).slice(0,8);got.push("marks")}
+  return got.length?["AI ("+r.provider+")","read the "+got.join(", ")+" from your document"]:null
+ }catch(e){return null}}
+async function showImages(q){
+ if(!q){say("<p>Say what to search for, for example <b>/images water cycle diagram</b>.</p>");return}
+ const t=typing();
+ try{
+  const j=await api("/api/images?q="+encodeURIComponent(q));
+  t.innerHTML=`<p>Free pictures for <b>${esc(q)}</b>. Keep the credit when you use one.</p><div class="grid">`+j.items.map((x,i)=>`<div class="gi">${safeUrl(x.thumb)?`<img src="${esc(x.thumb)}" alt="${esc(x.title)}" loading="lazy" referrerpolicy="no-referrer">`:""}<div><b>${esc(x.title).slice(0,60)}</b>${esc(x.by)} · ${esc(x.license)}</div><div class="acts">${safeUrl(x.url)?`<a class="btn" href="${esc(x.url)}" target="_blank" rel="noopener">Open</a>`:""}<button class="btn" data-c="${i}" type="button">Copy credit</button></div></div>`).join("")+`</div>`;
+  t.querySelectorAll("[data-c]").forEach(b=>b.onclick=async()=>{const x=j.items[+b.dataset.c];try{await navigator.clipboard.writeText(`${x.title} by ${x.by} (${x.license}) ${x.url||""}`);b.textContent="Copied"}catch(e){b.textContent="Failed"}});
+ }catch(e){if(e.auth&&await ensureAI())return showImages(q);t.innerHTML=`<p class="err">${esc(e.message)}</p>`}
+ down()}
+async function showModels(){
+ await loadStatus();
+ if(!SRV){say("<p>The AI server is not connected.</p>");return}
+ const m=SRV.models||{};
+ if(SRV.locked&&!SRV.authed){say("<p>Locked. Send any AI task to enter the password.</p>");return}
+ say("<p>AI models:</p><ul class='steps'>"+Object.values(m).map(p=>`<li><b>${esc(p.label)}</b>: ${p.on?`ready. Quick: ${esc(p.models.fast)}, standard: ${esc(p.models.std)}, deep: ${esc(p.models.deep)}`:"no key set"}</li>`).join("")+"</ul><p>Add <b>#claude</b>, <b>#gpt</b> or <b>#gemini</b> to any task to choose a model. Add <b>#deep</b> for more thinking or <b>#fast</b> for speed.</p>")}
+function help(){
+ say("<p>Type <b>/</b> to pick a task and <b>#</b> to pick a model.</p><ul class='steps'>"+CMDS().map(([k,c])=>`<li><b>/${esc(k)}</b>: ${esc(c.desc||c.label)}</li>`).join("")+"</ul>")}
+async function send(){
+ if(busy)return;
+ const raw=ta.value;let{cmd,tags,text}=parse(raw);
+ const files=pending.slice();
+ if(!cmd){
+  if(!text&&!files.length)return;
+  if(!text&&files.every(f=>/\.docx$/i.test(f.name)))cmd="formatter";
+  else if(lastDoc&&/^(make|add|change|remove|shorten|lengthen|replace|fix|rewrite|more|less|use|put)\b/i.test(text)&&!files.length)cmd="revise";
+  else cmd="ask"}
+ if(cmd==="help"){ta.value="";grow();pal.hidden=true;help();return}
+ if(!CMDS().some(([k])=>k===cmd)){say(`<p class="err">I do not know /${esc(cmd)}.</p>`);help();return}
+ ta.value="";pending=[];tray();grow();pal.hidden=true;
+ say((raw.trim()?`<p>${esc(raw.trim())}</p>`:"")+files.map(f=>fcard(f.name,size(f.size),(f.name.split(".").pop()||"file").slice(0,4).toUpperCase())).join(""),"u");
+ if(cmd==="models")return showModels();
+ if(cmd==="images")return showImages(text);
+ if(cmd==="formatter"){
+  const d=files.filter(f=>/\.docx$/i.test(f.name));
+  if(!d.length){say("<p>Attach a Word (.docx) file to format.</p>");return}
+  for(const f of d){file=f;buf=await f.arrayBuffer();await format(tags)}
+  return}
+ let src=null;
+ const dx=files.find(f=>/\.docx$/i.test(f.name));
+ if(dx&&cmd==="proofread")src={name:dx.name,bytes:await dx.arrayBuffer()};
+ if(!text&&!files.length){say("<p>Tell me what you need, for example <b>/exam Grade 6 English, 20 marks, unit on animals</b>.</p>");return}
+ await runAI(cmd,text,tags,files,{src})}
+
+async function format(tags=[]){
  if(busy||!buf)return;busy=true;
  const t=typing();
  try{
   await new Promise(r=>setTimeout(r,400));
-  const{data,log}=await build(get());
+  const o=get(),note=await aiAssist(o,tags);const{data,log}=await build(o);if(note)log.unshift(note);
   const name=file.name.replace(/\.docx$/i,"")+"_formatted.docx";
   t.innerHTML=`<p>Done. Your document is in the new design.</p><ul class="steps">${log.map(l=>`<li><b>${esc(l[0])}</b>: ${esc(l[1])}</li>`).join("")}</ul>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Save as PDF</button><button class="btn" data-a="again">Format again</button></div>`;
   t.querySelector('[data-a=docx]').onclick=()=>saveBytes(name,data,"application/vnd.openxmlformats-officedocument.wordprocessingml.document");
   t.querySelector('[data-a=pdf]').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{await toPdf(data)}catch(x){say(`<p class="err">Could not make the PDF: ${esc(x.message)}. Download the Word file and save it as PDF from Word.</p>`)}b.disabled=false};
-  t.querySelector('[data-a=again]').onclick=()=>format();
+  t.querySelector('[data-a=again]').onclick=()=>format(tags);
   down();
- }catch(e){t.innerHTML=`<p class="err">I could not format this file: ${esc(e.message)}</p><div class="acts"><button class="btn" data-a="retry">Try again</button></div>`;t.querySelector("[data-a=retry]").onclick=()=>format()}
+ }catch(e){t.innerHTML=`<p class="err">I could not format this file: ${esc(e.message)}</p><div class="acts"><button class="btn" data-a="retry">Try again</button></div>`;t.querySelector("[data-a=retry]").onclick=()=>format(tags)}
  finally{busy=false}
 }
 
@@ -548,6 +832,7 @@ async function build(o){
  zip.file("word/document.xml",S.serializeToString(doc));
  return{data:await zip.generateAsync({type:"uint8array",compression:"DEFLATE"}),log};
 }
+loadStatus();
 </script>
 </body>
 </html>
