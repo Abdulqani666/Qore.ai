@@ -76,7 +76,7 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .f{margin-bottom:10px}
 label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
-select,input[type=text],input[type=number]{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font-size:16px}
+select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font-size:16px}
 .chk{display:flex;gap:9px;align-items:center;margin:6px 0 10px;font-size:15px;color:var(--ink)}
 .chk input{width:18px;height:18px;accent-color:var(--accent)}
 .note{font-size:13px;color:var(--mute);margin:6px 0 0}
@@ -141,6 +141,7 @@ select,input[type=text],input[type=number]{width:100%;padding:9px 10px;border:1p
    <div class="f"><label for="t2">Line 2 (subject or exam)</label><input type="text" id="t2"></div>
    <div class="f"><label for="t3">Line 3 (term or date)</label><input type="text" id="t3"></div>
    <label class="chk"><input type="checkbox" id="lg"> Show logo on the left</label>
+   <label class="chk"><input type="checkbox" id="wm"> Faded logo watermark on every page</label>
    <div style="display:flex;gap:12px;align-items:center"><img id="lgimg" alt="Logo preview" style="width:52px;height:auto"><button class="btn" id="lgbtn">Change logo</button><input type="file" id="lgpick" accept="image/png,image/jpeg" hidden></div>
    <p class="note">Use this only on documents that do not already have a title.</p>
   </div>
@@ -151,6 +152,11 @@ select,input[type=text],input[type=number]{width:100%;padding:9px 10px;border:1p
     <div class="f"><label for="im">Total marks</label><input type="text" id="im" placeholder="e.g. 10"></div>
    </div>
    <div class="f"><label for="it">Teacher (leave empty for a blank line)</label><input type="text" id="it"></div>
+   <label class="chk"><input type="checkbox" id="i4"> Also add Term and Time Allowed (4 rows)</label>
+  </div>
+  <div class="sec"><h3>General instructions</h3>
+   <label class="chk"><input type="checkbox" id="gi"> Add a General Instructions list under the box</label>
+   <div class="f"><label for="gitext">One instruction per line</label><textarea id="gitext" rows="4"></textarea></div>
   </div>
   <div class="sec"><h3>Page</h3>
    <div class="row">
@@ -177,10 +183,10 @@ select,input[type=text],input[type=number]{width:100%;padding:9px 10px;border:1p
 const W="http://schemas.openxmlformats.org/wordprocessingml/2006/main",R="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const NS=`xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"`;
 const $=id=>document.getElementById(id);
-const IDS=["font","size","force","bw","tight","caps","num","bands","tbl","tb","t1","t2","t3","lg","ib","ic","im","it","mt","ml","border","ft","pn","pos","fline"];
+const IDS=["wm","i4","gi","gitext","font","size","force","bw","tight","caps","num","bands","tbl","tb","t1","t2","t3","lg","ib","ic","im","it","mt","ml","border","ft","pn","pos","fline"];
 const PRE={
-exam:{font:"Verdana",size:10,force:false,bw:true,tight:true,caps:"headings",num:"none",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"MONTHLY EXAMINATION",lg:true,ib:true,ic:"",im:"",it:"",mt:15,ml:18,border:false,ft:"EXAMINATION BOARD",pn:"x",pos:"right",fline:true},
-plain:{font:"Times New Roman",size:12,force:false,bw:false,tight:false,caps:"none",num:"none",bands:false,tbl:false,tb:false,t1:"",t2:"",t3:"",lg:false,ib:false,ic:"",im:"",it:"",mt:25,ml:25,border:false,ft:"",pn:"n",pos:"center",fline:false}};
+exam:{font:"Verdana",size:10,force:false,bw:true,tight:true,caps:"headings",num:"none",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"MONTHLY EXAMINATION",lg:true,wm:true,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:true,ic:"",im:"",it:"",mt:15,ml:18,border:false,ft:"EXAMINATION BOARD",pn:"x",pos:"right",fline:true},
+plain:{font:"Times New Roman",size:12,force:false,bw:false,tight:false,caps:"none",num:"none",bands:false,tbl:false,tb:false,t1:"",t2:"",t3:"",lg:false,wm:false,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:false,ic:"",im:"",it:"",mt:25,ml:25,border:false,ft:"",pn:"n",pos:"center",fline:false}};
 const get=()=>Object.fromEntries(IDS.map(i=>[i,$(i).type==="checkbox"?$(i).checked:$(i).value]));
 const put=o=>IDS.forEach(i=>{if(!(i in o))return;$(i).type==="checkbox"?$(i).checked=!!o[i]:$(i).value=o[i]});
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -280,7 +286,7 @@ let useKW=false;
 function isBand(p){
  if(inTable(p))return false;
  const t=text(p).trim();if(!t||t.length>60)return false;
- if(useKW)return KW.test(t)&&isHeading(p);
+ if(useKW)return KW.test(t);
  const ps=qa(p,"pStyle")[0];
  if(KW.test(t))return true;
  return isHeading(p)&&t===t.toUpperCase()&&/[A-Z]/.test(t)&&t.length<=40}
@@ -324,9 +330,18 @@ function infoXml(o,tw){
  const rp=b=>`<w:rPr>${rfx(f)}${b?"<w:b/><w:bCs/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
  const cell=(label,val)=>`<w:tc><w:tcPr><w:tcW w:w="${h}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="70" w:after="70"/></w:pPr><w:r>${rp(1)}<w:t xml:space="preserve">${esc(label)} </w:t></w:r><w:r>${rp(0)}<w:t xml:space="preserve">${esc(val)}</w:t></w:r></w:p></w:tc>`;
  const u=n=>"_".repeat(n);
- const rows=[[["Class:",o.ic||u(8)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]];
+ const rows=o.i4?[[["Class:",o.ic||u(8)],["Term:",u(14)]],[["Time Allowed:",u(14)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]]:[[["Class:",o.ic||u(8)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]];
  const tbl=`<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${bd}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="${h}"/><w:gridCol w:w="${tw-h}"/></w:tblGrid>${rows.map(r=>`<w:tr>${cell(...r[0])}${cell(...r[1])}</w:tr>`).join("")}</w:tbl>`;
  return tbl+`<w:p><w:pPr><w:spacing w:before="0" w:after="120"/></w:pPr></w:p>`}
+
+function instrXml(o){
+ const f=esc(o.font),sz=Math.round(Math.max(o.size-0.5,8)*2);
+ const rp=b=>`<w:rPr>${rfx(f)}${b?"<w:b/><w:bCs/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
+ const lines=String(o.gitext||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+ if(!lines.length)return"";
+ let x=`<w:p><w:pPr><w:keepNext/><w:spacing w:before="40" w:after="40"/></w:pPr><w:r>${rp(1)}<w:t>GENERAL INSTRUCTIONS</w:t></w:r></w:p>`;
+ lines.forEach((l,i)=>{x+=`<w:p><w:pPr><w:spacing w:before="0" w:after="20"/><w:ind w:left="432"/></w:pPr><w:r>${rp(0)}<w:t xml:space="preserve">${i+1}. ${esc(l)}</w:t></w:r></w:p>`});
+ return x+`<w:p><w:pPr><w:spacing w:before="0" w:after="60"/></w:pPr></w:p>`}
 
 async function build(o){
  o.size=parseFloat(o.size)||10;
@@ -388,7 +403,7 @@ async function build(o){
 
  /* capitals, numbering, part bars */
  const paras=qa(doc,"p");
- useKW=paras.some(p=>!inTable(p)&&KW.test(text(p))&&isHeading(p)&&text(p).trim().length<=60);
+ useKW=paras.some(p=>!inTable(p)&&KW.test(text(p))&&text(p).trim().length<=60);
  let caps=0,nums=0,n=0,bars=0;
  const barSz=String(Math.round((o.size+2)*2));
  paras.forEach(p=>{
@@ -469,20 +484,44 @@ async function build(o){
  const hasInfo=/(^|\n)\s*(magaca|name|student|date|class|grade|fasalka|taariikh)\b/i.test(first8);
  if(banner&&o.tb){o.tb=false;log.push(["Title block","skipped, your document already has a school banner"])}
  if(hasInfo&&o.ib){o.ib=false;log.push(["Student box","skipped, your document already has Name and Date lines"])}
+ let mediaDone=false;
+ const putLogo=async()=>{
+  if(mediaDone||!logo)return;mediaDone=true;
+  zip.file("word/media/fmtlogo."+logo.ext,logo.bytes);
+  const cf="[Content_Types].xml",ct=await zip.file(cf).async("string");
+  if(!ct.includes(`Extension="${logo.ext}"`))zip.file(cf,ct.replace("</Types>",`<Default Extension="${logo.ext}" ContentType="image/${logo.ext}"/></Types>`))};
  if(o.tb&&(o.t1||o.t2||o.t3||use)){
   if(use){
-   zip.file("word/media/fmtlogo."+logo.ext,logo.bytes);
+   await putLogo();
    const rf="word/_rels/document.xml.rels",rels=await zip.file(rf).async("string");
    zip.file(rf,rels.replace("</Relationships>",`<Relationship Id="rIdFmtLogo" Type="${R}/image" Target="media/fmtlogo.${logo.ext}"/></Relationships>`));
-   const cf="[Content_Types].xml",ct=await zip.file(cf).async("string");
-   if(!ct.includes(`Extension="${logo.ext}"`))zip.file(cf,ct.replace("</Types>",`<Default Extension="${logo.ext}" ContentType="image/${logo.ext}"/></Types>`));
   }
   ins.push(...frag(doc,titleXml(o,tw,use)));
   log.push(["Title block",[use?"logo":"",o.t1].filter(Boolean).join(", ")||"added"]);
  }
- if(o.ib){ins.push(...frag(doc,infoXml(o,tw)));log.push(["Student box","Class, marks, name, roll no, date, teacher"])}
+ if(o.ib){ins.push(...frag(doc,infoXml(o,tw)));log.push(["Student box",o.i4?"Class, term, time, marks, name, roll no, date, teacher":"Class, marks, name, roll no, date, teacher"])}
+ const hasGI=paras.some(p=>/^\s*(general\s+)?instructions\b/i.test(text(p)));
+ if(o.gi&&!hasGI){const gx=instrXml(o);if(gx){ins.push(...frag(doc,gx));log.push(["Instructions","general instructions list added"])}}
+ else if(o.gi&&hasGI)log.push(["Instructions","skipped, your document already has instructions"]);
  const first=body.firstChild;ins.forEach(x=>body.insertBefore(x,first));
 
+ if(o.wm&&logo){
+  const hasHdr=secs.some(sp=>qa(sp,"headerReference").some(h=>attr(h,"type")==="default"));
+  if(hasHdr)log.push(["Watermark","skipped, your document already has a header"]);
+  else{
+   await putLogo();
+   const cx=Math.round(3.6*914400),cy=Math.round(cx*logo.h/logo.w);
+   const hx=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr ${NS}><w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="251658240" behindDoc="1" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:align>center</wp:align></wp:positionH><wp:positionV relativeFrom="page"><wp:align>center</wp:align></wp:positionV><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="9002" name="Watermark"/><wp:cNvGraphicFramePr/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="watermark"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdFmtWm"><a:alphaModFix amt="12000"/></a:blip><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm rot="-2700000"><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r></w:p></w:hdr>`;
+   zip.file("word/headerFmt.xml",hx);
+   zip.file("word/_rels/headerFmt.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdFmtWm" Type="${R}/image" Target="media/fmtlogo.${logo.ext}"/></Relationships>`);
+   const rf="word/_rels/document.xml.rels",rels=await zip.file(rf).async("string");
+   zip.file(rf,rels.replace("</Relationships>",`<Relationship Id="rIdFmtHeader" Type="${R}/header" Target="headerFmt.xml"/></Relationships>`));
+   const cf="[Content_Types].xml",ct=await zip.file(cf).async("string");
+   zip.file(cf,ct.replace("</Types>",`<Override PartName="/word/headerFmt.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/></Types>`));
+   secs.forEach(sp=>{const hr=mk(doc,"headerReference",{type:"default"});hr.setAttributeNS(R,"r:id","rIdFmtHeader");sp.insertBefore(hr,sp.firstChild)});
+   log.push(["Watermark","faded logo on every page"]);
+  }
+ }
  zip.file("word/document.xml",S.serializeToString(doc));
  return{data:await zip.generateAsync({type:"uint8array",compression:"DEFLATE"}),log};
 }
