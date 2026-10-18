@@ -160,13 +160,14 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
   <div class="sec"><h3>Text</h3>
    <div class="row">
     <div class="f"><label for="font">Font</label><select id="font"><option>Verdana</option><option>Arial</option><option>Times New Roman</option><option>Calibri</option><option>Georgia</option><option>Tahoma</option></select></div>
-    <div class="f"><label for="size">Size (pt)</label><input type="number" id="size" min="8" max="24" step="0.5"></div>
+    <div class="f"><label for="size">Text size (pt)</label><input type="number" id="size" min="8" max="24" step="0.5"></div>
+    <div class="f"><label for="hs">Title size (pt)</label><input type="number" id="hs" min="8" max="30" step="0.5"></div>
    </div>
-   <label class="chk"><input type="checkbox" id="force"> Same size on every line, including titles</label>
+   <label class="chk"><input type="checkbox" id="force"> Remove the old font sizes (use the sizes above)</label>
    <label class="chk"><input type="checkbox" id="bw"> Black and white only (remove colors)</label>
    <label class="chk"><input type="checkbox" id="tight"> Compact spacing</label>
    <div class="f"><label for="caps">Capital letters</label><select id="caps"><option value="none">Leave as written</option><option value="headings">Headings and bold lines</option><option value="all">All text</option></select></div>
-   <div class="f"><label for="num">Numbering</label><select id="num"><option value="none">None</option><option value="headings">Number headings and bold lines</option><option value="paras">Number every paragraph outside tables</option></select></div>
+   <div class="f"><label for="num">Numbering</label><select id="num"><option value="none">None</option><option value="headings">Number headings and bold lines</option><option value="paras">Number every paragraph outside tables</option><option value="auto">Number questions where numbers are missing</option></select></div>
   </div>
   <div class="sec"><h3>Parts and tables</h3>
    <label class="chk"><input type="checkbox" id="bands"> Black bars on "Part" headings</label>
@@ -221,10 +222,10 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
 const W="http://schemas.openxmlformats.org/wordprocessingml/2006/main",R="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const NS=`xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"`;
 const $=id=>document.getElementById(id);
-const IDS=["rm","wm","i4","gi","gitext","font","size","force","bw","tight","caps","num","bands","tbl","tb","t1","t2","t3","lg","ib","ic","im","it","mt","ml","border","ft","pn","pos","fline"];
+const IDS=["rm","wm","i4","gi","gitext","font","size","hs","force","bw","tight","caps","num","bands","tbl","tb","t1","t2","t3","lg","ib","ic","im","it","mt","ml","border","ft","pn","pos","fline"];
 const PRE={
-exam:{rm:true,font:"Verdana",size:10,force:false,bw:true,tight:true,caps:"headings",num:"none",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"MONTHLY EXAMINATION",lg:true,wm:true,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:true,ic:"",im:"",it:"",mt:15,ml:18,border:false,ft:"EXAMINATION BOARD",pn:"x",pos:"right",fline:true},
-plain:{rm:false,font:"Times New Roman",size:12,force:false,bw:false,tight:false,caps:"none",num:"none",bands:false,tbl:false,tb:false,t1:"",t2:"",t3:"",lg:false,wm:false,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:false,ic:"",im:"",it:"",mt:25,ml:25,border:false,ft:"",pn:"n",pos:"center",fline:false}};
+exam:{rm:true,font:"Verdana",size:12,hs:14,force:true,bw:true,tight:true,caps:"headings",num:"auto",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"MONTHLY EXAMINATION",lg:true,wm:true,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:true,ic:"",im:"",it:"",mt:15,ml:18,border:true,ft:"EXAMINATION BOARD",pn:"x",pos:"right",fline:true},
+plain:{rm:false,font:"Times New Roman",size:12,hs:14,force:false,bw:false,tight:false,caps:"none",num:"none",bands:false,tbl:false,tb:false,t1:"",t2:"",t3:"",lg:false,wm:false,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:false,ic:"",im:"",it:"",mt:25,ml:25,border:false,ft:"",pn:"n",pos:"center",fline:false}};
 const get=()=>Object.fromEntries(IDS.map(i=>[i,$(i).type==="checkbox"?$(i).checked:$(i).value]));
 const put=o=>IDS.forEach(i=>{if(!(i in o))return;$(i).type==="checkbox"?$(i).checked=!!o[i]:$(i).value=o[i]});
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -602,7 +603,7 @@ function titleXml(o,tw,use){
  if(use){
   const cx=720000,cy=Math.round(cx*logo.h/logo.w);
   c1=`<w:tc><w:tcPr><w:tcW w:w="${LW}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="9001" name="Logo"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="logo"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdFmtLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p></w:tc>`}
- const lines=line(o.t1,Math.round((o.size+4)*2))+line(o.t2,Math.round((o.size+2)*2))+line(o.t3,Math.round(Math.max(o.size-1,8)*2));
+ const lines=line(o.t1,Math.round(o.hs*2))+line(o.t2,Math.round(o.hs*2))+line(o.t3,Math.round(o.size*2));
  const c2=`<w:tc><w:tcPr><w:tcW w:w="${tw-LW}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>${lines||"<w:p/>"}</w:tc>`;
  const grid=use?`<w:gridCol w:w="${LW}"/><w:gridCol w:w="${tw-LW}"/>`:`<w:gridCol w:w="${tw}"/>`;
  const tbl=`<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${none}</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid><w:tr>${c1}${c2}</w:tr></w:tbl>`;
@@ -629,12 +630,14 @@ function instrXml(o){
  return x+`<w:p><w:pPr><w:spacing w:before="0" w:after="60"/></w:pPr></w:p>`}
 
 async function build(o){
- o.size=parseFloat(o.size)||10;
+ o.size=parseFloat(o.size)||12;o.hs=parseFloat(o.hs)||o.size+2;
  const zip=await JSZip.loadAsync(buf),log=[],P=new DOMParser(),S=new XMLSerializer();
  if(!zip.file("word/document.xml"))throw new Error("This file has no document body.");
  const doc=P.parseFromString(await zip.file("word/document.xml").async("string"),"application/xml");
  if(doc.getElementsByTagName("parsererror").length)throw new Error("The document text could not be read.");
  const half=String(Math.round(o.size*2));
+ const tw0x=()=>{const sz=qa(doc,"pgSz")[0],w=sz?+attr(sz,"w")||11906:11906;return w-2*Math.round((parseFloat(o.ml)||18)*56.7)};
+ const isBandP=p=>false;
 
  /* styles: font, size, colors, spacing */
  const sf=zip.file("word/styles.xml");
@@ -666,6 +669,41 @@ async function build(o){
  log.push(["Font",`${o.font}, ${o.size} pt${o.force?" on every line":""}`]);
  if(o.bw){qa(doc,"color").concat(qa(doc,"highlight"),qa(doc,"shd")).forEach(e=>e.remove());log.push(["Colors","removed, black and white only"])}
 
+
+ /* tidy: empty lines, spacing, writing lines, numbering */
+ const hasStuff=p=>qa(p,"drawing").length||qa(p,"pict").length||qa(p,"sectPr").length||qa(p,"fldChar").length||qa(p,"fldSimple").length||qa(p,"br").some(b=>attr(b,"type")==="page"||attr(b,"type")==="column")||qa(p,"object").length;
+ let gone=0,lines=0;
+ if(o.tight){
+  qa(doc,"p").forEach(p=>{
+   if(text(p).trim()||hasStuff(p)||inTable(p))return;
+   const pr=p.previousElementSibling,nx=p.nextElementSibling;
+   if(pr&&nx&&pr.localName==="tbl"&&nx.localName==="tbl"){
+    qa(p,"pPr").forEach(e=>e.remove());
+    const pp=mk(doc,"pPr");pp.appendChild(mk(doc,"spacing",{before:"0",after:"0",line:"40",lineRule:"exact"}));p.insertBefore(pp,p.firstChild);return}
+   p.remove();gone++});
+  qa(doc,"p").forEach(p=>{
+   const t=text(p).trim(),us=t.replace(/[\s]/g,"");
+   if(us.length>=8&&/^[_.…—\-]+$/.test(us)&&!inTable(p)&&!hasStuff(p)){
+    const w=tw0x(),frac=Math.min(1,us.length/80);
+    qa(p,"pPr").forEach(e=>e.remove());qa(p,"r").forEach(e=>e.remove());
+    const pp=mk(doc,"pPr");pp.appendChild(mk(doc,"keepLines"));
+    const bd=mk(doc,"pBdr");bd.appendChild(mk(doc,"bottom",{val:"single",sz:"4",space:"1",color:"000000"}));pp.appendChild(bd);
+    pp.appendChild(mk(doc,"spacing",{before:"0",after:"60",line:"300",lineRule:"exact"}));
+    pp.appendChild(mk(doc,"ind",{right:String(Math.round(w*(1-frac)))}));
+    p.insertBefore(pp,p.firstChild);lines++}
+  });
+  qa(doc,"p").forEach(p=>{
+   if(isBandP(p))return;
+   const pp=qa(p,"pPr")[0];if(!pp)return;
+   const sp=qa(pp,"spacing")[0];if(!sp||qa(pp,"pBdr").length)return;
+   const af=+attr(sp,"after");if(!isNaN(af)&&af>80)sp.setAttributeNS(W,"w:after","80");
+   if(attr(sp,"before"))sp.setAttributeNS(W,"w:before","0");
+   if(sp.hasAttributeNS(W,"beforeLines"))sp.removeAttributeNS(W,"beforeLines");
+   if(sp.hasAttributeNS(W,"afterLines"))sp.removeAttributeNS(W,"afterLines");
+   const ln=+attr(sp,"line");if(attr(sp,"lineRule")!=="exact"&&ln>276)sp.setAttributeNS(W,"w:line","252")});
+  log.push(["Spacing",`${gone} empty line${gone===1?"":"s"} removed${lines?`, ${lines} writing line${lines===1?"":"s"} fitted to the page`:""}`]);
+ }
+
  /* tables */
  if(o.tbl){
   const bd=["top","left","bottom","right","insideH","insideV"];let n=0;
@@ -676,7 +714,7 @@ async function build(o){
    if(!has)return;
    if(ex)ex.remove();
    const nb=mk(doc,"tblBorders");bd.forEach(e=>nb.appendChild(mk(doc,e,{val:"single",sz:"4",space:"0",color:"000000"})));
-   qa(tp,"tblW").forEach(e=>e.remove());qa(tp,"tblLayout").forEach(e=>e.remove());
+   qa(tp,"tblW").forEach(e=>e.remove());qa(tp,"tblInd").forEach(e=>e.remove());qa(tp,"tblLayout").forEach(e=>e.remove());
    const tww=mk(doc,"tblW",{w:"5000",type:"pct"});
    const anchor=["jc","tblCellSpacing","tblInd"].map(x=>qa(tp,x)[0]).find(Boolean);
    anchor?tp.insertBefore(tww,anchor):tp.appendChild(tww);
@@ -690,7 +728,7 @@ async function build(o){
  const paras=qa(doc,"p");
  useKW=paras.some(p=>!inTable(p)&&KW.test(text(p))&&text(p).trim().length<=60);
  let caps=0,nums=0,n=0,bars=0;
- const barSz=String(Math.round((o.size+2)*2));
+ const barSz=String(Math.round(o.hs*2));
  paras.forEach(p=>{
   const ts=qa(p,"t");if(!ts.some(t=>t.textContent.trim()))return;
   const band=o.bands&&isBand(p);
@@ -720,6 +758,36 @@ async function build(o){
     r.insertBefore(rp,r.firstChild)});
    bars++}
  });
+
+ /* numbering and title size */
+ if(o.num==="auto"){
+  const OPT=/^\s*[A-Za-zÀ-ɏ]{1,2}[.)]\s/;
+  let seg=[],segs=[seg];
+  qa(doc,"p").forEach(p=>{if(inTable(p))return;const t=text(p).trim();if(!t)return;if(o.bands&&isBand(p)){seg=[];segs.push(seg);return}seg.push(p)});
+  let fixed=0,added=0;
+  segs.forEach(sg=>{
+   const cand=sg.filter(p=>{const t=text(p).trim();return !isHeading(p)&&!/^[_.\s]+$/.test(t)&&!OPT.test(t)&&(/\?\s*$/.test(t)||/_{3,}|\.{4,}/.test(t))});
+   const numRe=/^\s*(\d{1,3})\s*[-–.)]\s*/;
+   sg.forEach(p=>{const t0=qa(p,"t")[0];if(!t0)return;const m=t0.textContent.match(numRe);
+    if(m&&!/^\s*\d{1,3}\.\s/.test(t0.textContent)){t0.textContent=m[1]+". "+t0.textContent.slice(m[0].length);t0.setAttribute("xml:space","preserve");fixed++}});
+   const anyNum=sg.some(p=>numRe.test(text(p)));
+   if(!anyNum&&cand.length>=2){let k=0;cand.forEach(p=>{const t0=qa(p,"t").find(x=>x.textContent.length);if(!t0)return;k++;t0.textContent=k+". "+t0.textContent;t0.setAttribute("xml:space","preserve");added++})}
+  });
+  if(fixed||added)log.push(["Numbering",`${fixed?fixed+" fixed to 1. 2. 3. style":""}${fixed&&added?", ":""}${added?added+" questions numbered":""}`]);
+ }
+ const setSz=(r,v)=>{let rp=qa(r,"rPr")[0];if(!rp){rp=mk(doc,"rPr");r.insertBefore(rp,r.firstChild)}
+  qa(rp,"sz").concat(qa(rp,"szCs")).forEach(e=>e.remove());
+  const a=mk(doc,"sz",{val:v}),b=mk(doc,"szCs",{val:v});
+  const nxt=Array.from(rp.children).find(c=>["highlight","u","effect","bdr","shd","fitText","vertAlign","rtl","cs","em","lang","eastAsianLayout","specVanish","oMath"].includes(c.localName));
+  nxt?(rp.insertBefore(a,nxt),rp.insertBefore(b,nxt)):(rp.appendChild(a),rp.appendChild(b))};
+ let titled=0;
+ qa(doc,"p").forEach(p=>{
+  if(inTable(p)||isBand(p)&&o.bands)return;
+  const t=text(p).trim();if(!t||t.length>70||/\?\s*$/.test(t)||/^\d{1,3}\s*[.\-)]/.test(t))return;
+  const ps=qa(p,"pStyle")[0],styled=ps&&/^(heading|title|subtitle)/i.test(attr(ps,"val"));
+  const rs=qa(p,"r").filter(r=>qa(r,"t").some(x=>x.textContent.trim()));
+  if(styled||(rs.length&&rs.every(isBold))){rs.forEach(r=>setSz(r,String(Math.round(o.hs*2))));titled++}});
+ if(titled)log.push(["Titles",`${titled} title${titled>1?"s":""} at ${o.hs} pt, text at ${o.size} pt`]);
  if(bars)log.push(["Part bars",`${bars} black heading bar${bars>1?"s":""}`]);
  if(o.caps!=="none")log.push(["Capitals",`${caps} paragraphs`]);
  if(o.num!=="none")log.push(["Numbering",`${nums} paragraphs numbered`]);
