@@ -195,6 +195,19 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
  body.printing #printArea{display:block}
  body.printing #printArea section.docx{box-shadow:none!important;margin:0!important;break-after:page}
 }
+
+/* desktop layout: history lives in a sidebar */
+@media (min-width:900px){
+ body{padding-left:300px}
+ #hdrw{position:fixed;left:0;top:0;bottom:0;right:auto;width:300px;max-width:none;max-height:none;margin:0;border-radius:0;transform:none!important;border-right:1px solid var(--line);background:var(--panel);z-index:5}
+ #hdrw .sh-h{padding:18px 18px 6px}#hdrw .sh-h h2{font-size:20px}
+ #hsx,#hbtn{display:none}
+ .app{max-width:880px}
+ header{padding:14px 24px}
+ .logo,header h1{display:none}
+}
+.m.u .bd{border-radius:18px 18px 4px 18px}
+.dock{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
@@ -301,7 +314,7 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
  <div class="sh-b"><div class="fl-h"><button class="btn" id="zw">All Word files (.zip)</button><button class="btn" id="zp">All PDF files (.zip)</button></div><div id="fllist"></div><p class="note" id="flnote"></p></div>
 </div>
 <div id="hdrw" role="dialog" aria-modal="true" aria-label="Chat history" aria-hidden="true">
- <div class="sh-h"><h2>History</h2><button class="ghost" id="hsx">Done</button></div>
+ <div class="sh-h"><h2>Qore</h2><button class="ghost" id="hsx">Done</button></div>
  <div class="sh-b"><div class="fl-h"><button class="btn pri" id="hnew">New chat</button><button class="btn" id="hout">Sign out</button></div><p class="note" id="hwho"></p><div id="hlist"></div></div>
 </div>
 <div id="pv" role="dialog" aria-modal="true" aria-label="Preview" aria-hidden="true">
@@ -605,7 +618,7 @@ function queueSave(){if(!canSave())return;clearTimeout(saveT);saveT=setTimeout(s
 async function saveNow(){
  if(!canSave())return;const items=serialize();if(!items.some(i=>i.w==="u"))return;
  items.push({meta:1,hist:hist.slice(-12),lastDoc:lastDoc});
- try{await fetch("/api/chats/"+cid,{method:"PUT",headers:{"X-Access":access,"Content-Type":"application/json"},body:JSON.stringify({title:titleOf(items),items})})}catch(e){}}
+ try{await fetch("/api/chats/"+cid,{method:"PUT",headers:{"X-Access":access,"Content-Type":"application/json"},body:JSON.stringify({title:titleOf(items),items})});if(DESK.matches)histRefresh()}catch(e){}}
 new MutationObserver(queueSave).observe(th,{childList:true,subtree:true,characterData:true});
 async function getFile(fk){
  if(!fileCache[fk]){const r=await fetch("/api/files/"+fk,{headers:{"X-Access":access}});if(!r.ok)throw new Error("This file is no longer saved. Make it again.");fileCache[fk]=new Uint8Array(await r.arrayBuffer())}
@@ -645,6 +658,8 @@ async function histRefresh(){
    L.appendChild(d)})}catch(e){L.innerHTML='<p class="note">'+esc(e.message)+"</p>"}}
 function histOpen(){histRefresh();$("veil").classList.add("on");$("hdrw").classList.add("on");$("hdrw").setAttribute("aria-hidden","false")}
 function histClose(){$("hdrw").classList.remove("on");$("hdrw").setAttribute("aria-hidden","true");if(!$("sheet").classList.contains("on")&&!$("fl").classList.contains("on"))$("veil").classList.remove("on")}
+const DESK=matchMedia("(min-width:900px)");
+if(DESK.matches)setTimeout(histRefresh,600);
 $("hbtn").onclick=histOpen;$("hsx").onclick=histClose;$("hnew").onclick=newChat;$("veil").addEventListener("click",histClose);
 $("hout").onclick=()=>{access="";try{localStorage.removeItem("qore-access")}catch(e){}location.reload()};
 async function ensureAI(){

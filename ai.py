@@ -205,7 +205,39 @@ def pick_models(provider, tier):
         ok = [m for m in chain if m in ids]
         if ok:
             return ok
+        found = _family_pick(provider, tier, ids)
+        if found:
+            return found + chain
     return chain
+
+
+def _vkey(name):
+    return [int(x) for x in re.findall(r"\d+", re.sub(r"\d{8}|latest", "", name))] or [0]
+
+
+def _family_pick(provider, tier, ids):
+    """The names in CHAINS were not found on this account, so choose the newest model of the right kind."""
+    bad = ("image", "tts", "embed", "live", "audio", "vision", "realtime", "transcribe", "search", "moderation",
+           "instruct", "codex", "robotics", "computer", "customtools", "dall", "whisper", "sora")
+    pool = [m for m in ids if not any(b in m for b in bad)]
+    if provider == "claude":
+        word = {"fast": "haiku", "std": "sonnet", "deep": "opus"}[tier]
+        pool = [m for m in pool if word in m] or [m for m in pool if "sonnet" in m]
+    elif provider == "gemini":
+        pool = [m for m in pool if m.startswith("gemini")]
+        if tier == "deep":
+            pool = [m for m in pool if "pro" in m] or [m for m in pool if "flash" in m]
+        elif tier == "fast":
+            pool = [m for m in pool if "lite" in m] or [m for m in pool if "flash" in m]
+        else:
+            pool = [m for m in pool if "flash" in m and "lite" not in m] or [m for m in pool if "flash" in m]
+    else:
+        pool = [m for m in pool if m.startswith("gpt-")]
+        small = [m for m in pool if "mini" in m or "nano" in m]
+        big = [m for m in pool if m not in small]
+        pool = (small if tier == "fast" else big) or pool
+    pool.sort(key=lambda m: (_vkey(m), -len(m)), reverse=True)
+    return pool[:3]
 
 
 def describe():
@@ -248,7 +280,7 @@ def call(provider, tier, system, messages, files=(), thinking=False, max_tokens=
                 if _is_retryable(e):
                     break
                 raise AIError(f"{LABEL[provider]} could not answer: {str(e)[:200]}")
-    raise AIError(f"{LABEL[provider]} is busy or has no usable model right now.")
+    raise AIError(f"{LABEL[provider]} could not run: {str(last)[:160] if last else 'no usable model'}")
 
 
 def order_for(route, forced=None):
