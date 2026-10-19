@@ -169,8 +169,10 @@ details.dt{margin-top:8px;font-size:14px;color:var(--mute)}details.dt summary{cu
 /* design sheet */
 #veil{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
 #veil.on{opacity:1;pointer-events:auto}
-#sheet,#fl{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:20px 20px 0 0;max-height:88dvh;display:flex;flex-direction:column;transform:translateY(105%);transition:transform .25s ease;max-width:760px;margin:0 auto}
-#sheet.on,#fl.on{transform:none}
+#sheet,#fl,#hdrw{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:20px 20px 0 0;max-height:88dvh;display:flex;flex-direction:column;transform:translateY(105%);transition:transform .25s ease;max-width:760px;margin:0 auto}
+#sheet.on,#fl.on,#hdrw.on{transform:none}
+.hi{display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}.hi:last-child{border-bottom:0}.hi button.o{flex:1;text-align:left;background:none;border:0;padding:0;font:inherit;min-width:0}.hi b{display:block;font-weight:500;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hi small{color:var(--mute);font-size:12px}.hi .btn{padding:6px 11px;font-size:13px}
+.au{display:grid;gap:8px;margin-top:8px}.au .tabs{display:flex;gap:6px}.au .tabs button{flex:1}
 .sh-h{display:flex;align-items:center;padding:14px 18px 8px}
 .sh-h h2{margin:0;font:600 18px/1 Georgia,serif;flex:1}
 .sh-b{overflow-y:auto;padding:4px 18px 18px;-webkit-overflow-scrolling:touch}
@@ -200,6 +202,7 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
  <header>
   <div class="logo">Q</div>
   <h1>Qore</h1><span class="sp"></span>
+  <button class="ghost ic" id="hbtn" aria-haspopup="dialog" aria-label="Chat history"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4M12 8v4l3 2"/></svg><span class="lbl">History</span></button>
   <button class="ghost ic" id="inst"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="lbl">Install</span></button>
   <button class="ghost ic" id="files" aria-haspopup="dialog" aria-label="My files"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></svg><span class="lbl">Files</span><span id="fcount"></span></button>
   <button class="ghost ic" id="open" aria-haspopup="dialog"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span class="lbl">Design</span></button>
@@ -297,6 +300,10 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
  <div class="sh-h"><h2>My files</h2><button class="ghost" id="flx">Done</button></div>
  <div class="sh-b"><div class="fl-h"><button class="btn" id="zw">All Word files (.zip)</button><button class="btn" id="zp">All PDF files (.zip)</button></div><div id="fllist"></div><p class="note" id="flnote"></p></div>
 </div>
+<div id="hdrw" role="dialog" aria-modal="true" aria-label="Chat history" aria-hidden="true">
+ <div class="sh-h"><h2>History</h2><button class="ghost" id="hsx">Done</button></div>
+ <div class="sh-b"><div class="fl-h"><button class="btn pri" id="hnew">New chat</button><button class="btn" id="hout">Sign out</button></div><p class="note" id="hwho"></p><div id="hlist"></div></div>
+</div>
 <div id="pv" role="dialog" aria-modal="true" aria-label="Preview" aria-hidden="true">
  <div class="bar"><b id="pvName"></b><button class="btn pri" id="pvW">Download Word</button><button class="btn" id="pvP">Download PDF</button><button class="btn" id="pvX">Close</button></div>
  <div id="pvBody"></div>
@@ -324,7 +331,7 @@ function say(html,who){const hr=th.querySelector(".hero");if(hr)hr.remove();cons
 const typing=()=>say('<span class="dots" aria-label="Working"><i></i><i></i><i></i></span>');
 const size=n=>n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
 const fcard=(name,sub,ext)=>`<div class="fc"><div class="badge">${ext}</div><div class="t"><b>${esc(name)}</b><span>${esc(sub)}</span></div></div>`;
-(function hero(){
+function mkHero(){
  const h=document.createElement("div");h.className="hero";
  h.innerHTML=`<div class="hl">Q</div><h2>What should we make today?</h2><p>Write documents, exams and lessons with AI, or put your own Word file in the school design.</p><div class="cards">
  <button class="card" data-q="/build_document "><b>Build a document</b><span>Researches, thinks and writes from sources</span></button>
@@ -335,7 +342,8 @@ const fcard=(name,sub,ext)=>`<div class="fc"><div class="badge">${ext}</div><div
  <button class="card" data-q="/images "><b>Find pictures</b><span>Free images with credit</span></button></div>`;
  th.appendChild(h);
  h.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{ta.value=b.dataset.q;ta.focus();grow();palUpdate()});
- h.querySelector("[data-f]").onclick=()=>pick.click()})();
+ h.querySelector("[data-f]").onclick=()=>pick.click()}
+mkHero();
 
 /* ---------- design choice ---------- */
 let mineStore=null;
@@ -514,9 +522,12 @@ const DNAME={exam:"School exam",plain:"Plain document",mine:"My design","":"Cust
 const mark0=mark;mark=function(id){mark0(id);$("dsnt").textContent=DNAME[id]||"Custom design"};
 /* files made in this visit */
 const MADE=[];
-function registerDownload(name,data){
+const rid=()=>Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,"0")).join("");
+function registerDownload(name,data,t){
  const i=MADE.findIndex(x=>x.name===name);if(i>=0)MADE.splice(i,1);
- MADE.push({name,data});const c=$("fcount");c.textContent=MADE.length;c.classList.add("on")}
+ MADE.push({name,data});
+ if(SRV&&SRV.accounts&&SRV.authed){const fk=rid(),a=t&&t.querySelector(".acts");if(a){a.dataset.fk=fk;a.dataset.fn=name}
+  fetch("/api/files/"+fk+"?name="+encodeURIComponent(name),{method:"PUT",headers:{"X-Access":access},body:data}).catch(()=>{})}const c=$("fcount");c.textContent=MADE.length;c.classList.add("on")}
 function flRender(){
  const L=$("fllist");L.innerHTML="";
  if(!MADE.length){L.innerHTML='<p class="note">Nothing yet. Files you make will be listed here so you can download them again.</p>';return}
@@ -557,11 +568,85 @@ if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.s
 
 
 /* password */
-function askPass(){return new Promise(ok=>{
+function askPass(){return SRV&&SRV.accounts?askAuth():new Promise(ok=>{
  const b=say(`<p>This app is locked. Enter the password to use AI tasks.</p><div class="pw"><input type="password" autocomplete="current-password" aria-label="Password"><button class="btn pri" type="button">Unlock</button></div><p class="err" hidden></p>`);
  const inp=b.querySelector("input"),btn=b.querySelector("button"),er=b.querySelector(".err");inp.focus();
  const go=async()=>{access=inp.value;await loadStatus();if(SRV&&SRV.authed){try{localStorage.setItem("qore-access",access)}catch(e){}b.innerHTML="<p>Unlocked.</p>";ok(true)}else{access="";er.textContent="Wrong password.";er.hidden=false}};
  btn.onclick=go;inp.onkeydown=e=>{if(e.key==="Enter")go()}})}
+/* accounts */
+let authBox=null;
+function askAuth(){
+ if(authBox&&authBox.isConnected&&authBox._p)return authBox._p;
+ let mode="in";
+ const b=say(`<p><b>Sign in to Qore</b></p><p>Your chats are saved to your account and open on any phone.</p><div class="au"><div class="tabs"><button class="btn pri" type="button" data-m="in">Sign in</button><button class="btn" type="button" data-m="up">Create account</button></div><input type="email" autocomplete="email" placeholder="Email" aria-label="Email"><input type="password" autocomplete="current-password" placeholder="Password (8+ characters)" aria-label="Password"><input type="text" class="code" placeholder="Access code from the school" aria-label="Access code" hidden><button class="btn pri go" type="button">Sign in</button><p class="err" hidden></p></div>`);
+ const [em,pw,code]=b.querySelectorAll("input"),go=b.querySelector(".go"),er=b.querySelector(".err");
+ const tabs=b.querySelectorAll("[data-m]");
+ const setM=m=>{mode=m;tabs.forEach(t=>t.classList.toggle("pri",t.dataset.m===m));go.textContent=m==="up"?"Create account":"Sign in";code.hidden=!(m==="up"&&SRV&&SRV.invite);pw.autocomplete=m==="up"?"new-password":"current-password"};
+ tabs.forEach(t=>t.onclick=()=>setM(t.dataset.m));
+ const p=new Promise(ok=>{
+  const doit=async()=>{er.hidden=true;go.disabled=true;
+   try{const j=await api("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:mode==="up"?"signup":"login",email:em.value,password:pw.value,code:code.value})});
+    access=j.token;try{localStorage.setItem("qore-access",access)}catch(e){}
+    await loadStatus();b.innerHTML="<p>Signed in as <b>"+esc(j.email)+"</b>.</p>";ok(true);authBox=null;histRefresh()}
+   catch(e){er.textContent=e.message;er.hidden=false}go.disabled=false};
+  go.onclick=doit;[em,pw,code].forEach(i=>i.onkeydown=e=>{if(e.key==="Enter")doit()})});
+ b._p=p;authBox=b;em.focus();return p}
+/* history */
+let cid=rid(),saveT=null,restoring=false,fileCache={};
+const canSave=()=>SRV&&SRV.accounts&&SRV.authed&&!restoring;
+function serialize(){
+ const items=[];
+ th.querySelectorAll(".m").forEach(m=>{if(m.querySelector(".dots"))return;const bd=m.querySelector(".bd");if(!bd)return;
+  if(bd.querySelector(".au"))return;
+  items.push({w:m.classList.contains("u")?"u":"a",h:bd.innerHTML})});
+ return items}
+function titleOf(items){const u=items.find(i=>i.w==="u");if(!u)return "";const d=document.createElement("div");d.innerHTML=u.h;d.querySelectorAll(".fc").forEach(x=>x.remove());return (d.textContent||"").trim().replace(/\s+/g," ").slice(0,60)||"Chat with a file"}
+function queueSave(){if(!canSave())return;clearTimeout(saveT);saveT=setTimeout(saveNow,1500)}
+async function saveNow(){
+ if(!canSave())return;const items=serialize();if(!items.some(i=>i.w==="u"))return;
+ items.push({meta:1,hist:hist.slice(-12),lastDoc:lastDoc});
+ try{await fetch("/api/chats/"+cid,{method:"PUT",headers:{"X-Access":access,"Content-Type":"application/json"},body:JSON.stringify({title:titleOf(items),items})})}catch(e){}}
+new MutationObserver(queueSave).observe(th,{childList:true,subtree:true,characterData:true});
+async function getFile(fk){
+ if(!fileCache[fk]){const r=await fetch("/api/files/"+fk,{headers:{"X-Access":access}});if(!r.ok)throw new Error("This file is no longer saved. Make it again.");fileCache[fk]=new Uint8Array(await r.arrayBuffer())}
+ return fileCache[fk]}
+function rebind(root){
+ root.querySelectorAll(".acts").forEach(a=>{
+  const fk=a.dataset.fk,name=a.dataset.fn||"document.docx";
+  a.querySelectorAll("button").forEach(btn=>{
+   const act=btn.dataset.a;
+   if(fk&&["view","docx","pdf"].includes(act)){
+    btn.onclick=async e=>{const el=e.currentTarget;el.disabled=true;
+     try{const d=await getFile(fk);if(act==="view")openPreview(name,d);else if(act==="docx")saveBytes(name,d,WORDMIME);else await downloadPdf(name,d,el)}
+     catch(x){say('<p class="err">'+esc(x.message)+"</p>")}el.disabled=false}}
+   else btn.remove()})});
+ root.querySelectorAll("input[type=checkbox]").forEach(i=>i.disabled=true)}
+function newChat(){
+ clearTimeout(saveT);cid=rid();hist=[];lastDoc=null;lastKind="";th.innerHTML="";mkHero();histClose()}
+async function openChat(id){
+ restoring=true;
+ try{const j=await api("/api/chats/"+id);clearTimeout(saveT);cid=id;th.innerHTML="";hist=[];lastDoc=null;lastKind="";
+  j.items.forEach(it=>{if(it.meta){hist=it.hist||[];if(it.lastDoc){lastDoc=it.lastDoc;lastKind="doc"}return}
+   const d=document.createElement("div");d.className="m "+(it.w==="u"?"u":"a");d.innerHTML=(it.w==="u"?"":'<div class="av">Q</div>')+'<div class="bd">'+it.h+"</div>";th.appendChild(d)});
+  rebind(th);histClose();down()}catch(e){$("hwho").textContent=e.message}
+ setTimeout(()=>{restoring=false},500)}
+async function histRefresh(){
+ const L=$("hlist");
+ if(!SRV||!SRV.accounts){L.innerHTML='<p class="note">History needs the sign-in database, which is not set up on this server yet.</p>';$("hout").hidden=true;$("hwho").textContent="";return}
+ $("hout").hidden=!SRV.authed;
+ if(!SRV.authed){$("hwho").textContent="";L.innerHTML='<p class="note">Sign in to save and see your chats.</p><div class="acts"><button class="btn pri" id="hsi">Sign in</button></div>';$("hsi").onclick=()=>{histClose();askAuth()};return}
+ $("hwho").textContent="Signed in as "+(SRV.email||"");
+ try{const j=await api("/api/chats");L.innerHTML="";
+  if(!j.chats.length)L.innerHTML='<p class="note">No saved chats yet. Start a chat and it will appear here.</p>';
+  j.chats.forEach(c=>{const d=document.createElement("div");d.className="hi";
+   d.innerHTML=`<button class="o" type="button"><b>${esc(c.title||"Chat")}</b><small>${new Date(c.updated*1000).toLocaleString([], {dateStyle:"medium",timeStyle:"short"})}</small></button><button class="btn" type="button" aria-label="Delete chat">Delete</button>`;
+   d.querySelector(".o").onclick=()=>openChat(c.id);
+   d.querySelector(".btn").onclick=async()=>{if(!confirm("Delete this chat?"))return;await api("/api/chats/"+c.id,{method:"DELETE"}).catch(()=>{});if(c.id===cid)newChat();histRefresh()};
+   L.appendChild(d)})}catch(e){L.innerHTML='<p class="note">'+esc(e.message)+"</p>"}}
+function histOpen(){histRefresh();$("veil").classList.add("on");$("hdrw").classList.add("on");$("hdrw").setAttribute("aria-hidden","false")}
+function histClose(){$("hdrw").classList.remove("on");$("hdrw").setAttribute("aria-hidden","true");if(!$("sheet").classList.contains("on")&&!$("fl").classList.contains("on"))$("veil").classList.remove("on")}
+$("hbtn").onclick=histOpen;$("hsx").onclick=histClose;$("hnew").onclick=newChat;$("veil").addEventListener("click",histClose);
+$("hout").onclick=()=>{access="";try{localStorage.removeItem("qore-access")}catch(e){}location.reload()};
 async function ensureAI(){
  if(!SRV)await loadStatus();
  if(!SRV){say("<p>The AI server is not connected. This page is running without it, so only <b>/formatter</b> works.</p>");return false}
@@ -637,7 +722,7 @@ async function docResult(r,t){
  const{bytes,meta}=await mdToDocx(r.text);
  const{data}=await buildFrom(bytes,designFor(r.cmd,meta));
  const name=slug(meta.title||r.cmd)+".docx";
- lastDoc={md:r.text,meta,cmd:r.cmd};lastKind="doc";registerDownload(name,data);
+ lastDoc={md:r.text,meta,cmd:r.cmd};lastKind="doc";
  t.innerHTML=`<p>Your document is ready.</p>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="view">Preview</button><button class="btn" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Download PDF</button><button class="btn" data-a="chg">Change it</button>${r.cmd==="exam"?'<button class="btn" data-a="key">Make marking scheme</button>':""}<button class="btn" data-a="txt">Show text</button></div>`+foot(r);
  const q=a=>t.querySelector(`[data-a=${a}]`);
  q("view").onclick=()=>openPreview(name,data);
@@ -646,7 +731,7 @@ async function docResult(r,t){
  q("chg").onclick=()=>{ta.value="/revise ";ta.focus()};
  q("txt").onclick=()=>say(lite(r.text));
  const k=q("key");if(k)k.onclick=()=>runAI("answer_key","Write the marking scheme for this exam:\n\n"+r.text,[],[]);
- down()}
+ registerDownload(name,data,t);down()}
 function textResult(r,t){
  t.innerHTML=lite(r.text)+`<div class="acts"><button class="btn" data-a="word">Make Word file</button><button class="btn" data-a="copy">Copy</button></div>`+foot(r);
  t.querySelector("[data-a=copy]").onclick=async e=>{try{await navigator.clipboard.writeText(r.text);e.currentTarget.textContent="Copied"}catch(x){e.currentTarget.textContent="Copy failed"}};
@@ -808,7 +893,7 @@ function showFormatted(t,res,name,notes,reply){
  q("docx").onclick=()=>saveBytes(name,data,WORDMIME);
  q("pdf").onclick=e=>downloadPdf(name,data,e.currentTarget);
  q("tell").onclick=()=>{ta.value="";ta.placeholder="Tell the formatter what is wrong, for example: make the title bigger";ta.focus()};
- registerDownload(name,data);down()}
+ registerDownload(name,data,t);down()}
 async function format(tags=[]){
  if(busy||!buf)return;busy=true;
  const t=typing();working(t,["Formatting your document..."]);
@@ -1259,7 +1344,7 @@ async function build(o){
  zip.file("word/document.xml",S.serializeToString(doc));
  return{data:await zip.generateAsync({type:"uint8array",compression:"DEFLATE"}),log,o};
 }
-loadStatus();
+loadStatus().then(()=>{if(SRV&&SRV.accounts&&!SRV.authed)setTimeout(askAuth,400)});
 </script>
 </body>
 </html>

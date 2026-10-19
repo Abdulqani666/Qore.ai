@@ -7,6 +7,7 @@ import hmac
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -18,6 +19,7 @@ import requests
 from flask import Flask, Response, jsonify, request, send_from_directory
 
 import ai
+import db
 from prompts import COMMANDS, TAGS, system_for
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -34,7 +36,20 @@ def password():
     return ai.env("APP_PASSWORD")
 
 
+if db.ENABLED:
+    try:
+        db.init()
+    except Exception as _e:      # noqa: BLE001
+        print("database setup failed:", _e)
+
+
+def user_id():
+    return db.read_token(request.headers.get("X-Access", "")) if db.ENABLED else None
+
+
 def authed():
+    if db.ENABLED:
+        return user_id() is not None
     pw = password()
     return (not pw) or hmac.compare_digest(request.headers.get("X-Access", ""), pw)
 
@@ -165,7 +180,8 @@ def healthz():
 
 @app.get("/api/status")
 def status():
-    return jsonify(locked=bool(password()), authed=authed(),
+    return jsonify(locked=bool(password()) or db.ENABLED, authed=authed(), accounts=db.ENABLED, invite=bool(password()),
+                   email=db.email_of(user_id()) if db.ENABLED and user_id() else "",
                    commands={k: {"label": v["label"], "desc": v["desc"], "kind": v["kind"]} for k, v in COMMANDS.items()},
                    tags=TAGS, models=ai.describe() if authed() else {}, fake=ai.FAKE, pdf=soffice_ok())
 
@@ -339,6 +355,129 @@ def pdf_page(pid, n):
         return jsonify(error="Could not draw the page."), 500
     with open(base + ".png", "rb") as f:
         return Response(f.read(), mimetype="image/png")
+
+
+# ------------------------------------------------------------ accounts, history, files
+AUTH_HITS = {}
+
+
+def auth_limited():
+    ip = (request.headers.get("X-Forwarded-For", request.remote_addr or "") or "").split(",")[0].strip()
+    now = time.time()
+    h = [t for t in AUTH_HITS.get(ip, []) if now - t < 3600]
+    AUTH_HITS[ip] = h + [now]
+    return len(h) >= 25
+
+
+@app.post("/api/auth")
+def auth():
+    if not db.ENABLED:
+        return jsonify(error="Accounts are not set up on this server."), 501
+    if auth_limited():
+        return jsonify(error="Too many tries. Wait a while and try again."), 429
+    j = request.get_json(silent=True) or {}
+    try:
+        if j.get("mode") == "signup":
+            pw = password()
+            if pw and not hmac.compare_digest(str(j.get("code", "")), pw):
+                return jsonify(error="The access code is wrong. Ask the owner of this app for it."), 403
+            uid, err = db.signup(j.get("email"), j.get("password"))
+        else:
+            uid, err = db.login(j.get("email"), j.get("password"))
+    except Exception as e:      # noqa: BLE001
+        return jsonify(error="The database is not ready yet. Try again in a minute. " + str(e)[:80]), 503
+    if err:
+        return jsonify(error=err), 400
+    return jsonify(token=db.make_token(uid), email=db.email_of(uid))
+
+
+def need_user():
+    if not db.ENABLED:
+        return None, (jsonify(error="History needs sign-in, which is not set up on this server."), 501)
+    uid = user_id()
+    if uid is None:
+        return None, (jsonify(error="Please sign in.", auth=True), 401)
+    return uid, None
+
+
+@app.get("/api/chats")
+def chats_list():
+    uid, err = need_user()
+    if err:
+        return err
+    rows = db.run("SELECT id,title,EXTRACT(EPOCH FROM updated) FROM chats WHERE uid=%s ORDER BY updated DESC LIMIT 200", (uid,), "all")
+    return jsonify(chats=[{"id": r[0], "title": r[1], "updated": int(r[2])} for r in rows])
+
+
+@app.get("/api/chats/<cid>")
+def chats_get(cid):
+    uid, err = need_user()
+    if err:
+        return err
+    r = db.run("SELECT title,items FROM chats WHERE id=%s AND uid=%s", (cid, uid), "one")
+    if not r:
+        return jsonify(error="Not found."), 404
+    return jsonify(id=cid, title=r[0], items=json.loads(r[1]))
+
+
+@app.put("/api/chats/<cid>")
+def chats_put(cid):
+    uid, err = need_user()
+    if err:
+        return err
+    if not re.fullmatch(r"[0-9a-f]{8,32}", cid):
+        return jsonify(error="Bad id."), 400
+    j = request.get_json(silent=True) or {}
+    items = json.dumps(j.get("items", []))[:3_000_000]
+    if not items.endswith("]"):
+        return jsonify(error="Chat is too long to save."), 413
+    owner = db.run("SELECT uid FROM chats WHERE id=%s", (cid,), "one")
+    if owner and owner[0] != uid:
+        return jsonify(error="Not yours."), 403
+    db.run("""INSERT INTO chats(id,uid,title,items,updated) VALUES(%s,%s,%s,%s,now())
+              ON CONFLICT (id) DO UPDATE SET title=EXCLUDED.title, items=EXCLUDED.items, updated=now()""",
+           (cid, uid, str(j.get("title", ""))[:120], items))
+    return jsonify(ok=True)
+
+
+@app.delete("/api/chats/<cid>")
+def chats_del(cid):
+    uid, err = need_user()
+    if err:
+        return err
+    db.run("DELETE FROM chats WHERE id=%s AND uid=%s", (cid, uid))
+    return jsonify(ok=True)
+
+
+@app.put("/api/files/<fid>")
+def files_put(fid):
+    uid, err = need_user()
+    if err:
+        return err
+    if not re.fullmatch(r"[0-9a-f]{8,32}", fid):
+        return jsonify(error="Bad id."), 400
+    data = request.get_data()
+    if not data or len(data) > 12_000_000:
+        return jsonify(error="File is empty or too big."), 400
+    owner = db.run("SELECT uid FROM files WHERE id=%s", (fid,), "one")
+    if owner and owner[0] != uid:
+        return jsonify(error="Not yours."), 403
+    import psycopg2
+    db.run("""INSERT INTO files(id,uid,name,data) VALUES(%s,%s,%s,%s)
+              ON CONFLICT (id) DO UPDATE SET data=EXCLUDED.data, name=EXCLUDED.name""",
+           (fid, uid, request.args.get("name", "file.docx")[:200], psycopg2.Binary(data)))
+    return jsonify(ok=True)
+
+
+@app.get("/api/files/<fid>")
+def files_get(fid):
+    uid, err = need_user()
+    if err:
+        return err
+    r = db.run("SELECT data FROM files WHERE id=%s AND uid=%s", (fid, uid), "one")
+    if not r:
+        return jsonify(error="This file is gone."), 404
+    return Response(bytes(r[0]), mimetype="application/octet-stream")
 
 
 if __name__ == "__main__":
