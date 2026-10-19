@@ -200,7 +200,7 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
  <header>
   <div class="logo">Q</div>
   <h1>Qore</h1><span class="sp"></span>
-  <button class="ghost ic" id="inst" hidden><svg viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="lbl">Install</span></button>
+  <button class="ghost ic" id="inst"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="lbl">Install</span></button>
   <button class="ghost ic" id="files" aria-haspopup="dialog" aria-label="My files"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></svg><span class="lbl">Files</span><span id="fcount"></span></button>
   <button class="ghost ic" id="open" aria-haspopup="dialog"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span class="lbl">Design</span></button>
  </header>
@@ -548,10 +548,11 @@ let deferred=null;
 const standalone=window.matchMedia&&matchMedia("(display-mode: standalone)").matches||navigator.standalone;
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;$("inst").hidden=false});
 window.addEventListener("appinstalled",()=>{$("inst").hidden=true;deferred=null});
-if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!standalone)$("inst").hidden=false;
+if(standalone)$("inst").hidden=true;
 $("inst").onclick=async()=>{
  if(deferred){deferred.prompt();try{await deferred.userChoice}catch(e){}deferred=null;$("inst").hidden=true}
- else say("<p>To install Qore on your iPhone: tap the <b>Share</b> button in Safari, then <b>Add to Home Screen</b>.</p>")};
+ else if(/iphone|ipad|ipod/i.test(navigator.userAgent))say("<p>To install Qore on your iPhone: tap the <b>Share</b> button in Safari, then <b>Add to Home Screen</b>.</p>");
+ else say("<p>To install Qore on your phone: open the browser menu (the three dots) and tap <b>Install app</b> or <b>Add to Home screen</b>. It then opens like a normal app.</p>")};
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("/sw.js").catch(()=>{});
 
 
