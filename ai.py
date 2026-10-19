@@ -87,9 +87,9 @@ def _is_auth(e):
 
 
 # ---------------------------------------------------------------- Claude
-def _claude(model, system, messages, files, thinking, max_tokens):
+def _claude(model, system, messages, files, thinking, max_tokens, timeout=240):
     import anthropic
-    client = anthropic.Anthropic(api_key=KEYS["claude"](), timeout=900, max_retries=1)
+    client = anthropic.Anthropic(api_key=KEYS["claude"](), timeout=timeout, max_retries=0)
     msgs = []
     for i, m in enumerate(messages):
         content = [{"type": "text", "text": m["text"] or "(empty)"}]
@@ -120,10 +120,10 @@ def _claude(model, system, messages, files, thinking, max_tokens):
 
 
 # ---------------------------------------------------------------- Gemini
-def _gemini(model, system, messages, files, thinking, max_tokens, grounded=False):
+def _gemini(model, system, messages, files, thinking, max_tokens, grounded=False, timeout=240):
     from google import genai
     from google.genai import types
-    client = genai.Client(api_key=KEYS["gemini"]())
+    client = genai.Client(api_key=KEYS["gemini"](), http_options=types.HttpOptions(timeout=int(timeout * 1000)))
     contents = []
     for i, m in enumerate(messages):
         parts = [types.Part.from_text(text=m["text"] or "(empty)")]
@@ -148,9 +148,9 @@ def _gemini(model, system, messages, files, thinking, max_tokens, grounded=False
 
 
 # ---------------------------------------------------------------- OpenAI
-def _gpt(model, system, messages, files, thinking, max_tokens):
+def _gpt(model, system, messages, files, thinking, max_tokens, timeout=240):
     from openai import OpenAI
-    client = OpenAI(api_key=KEYS["gpt"](), timeout=900, max_retries=1)
+    client = OpenAI(api_key=KEYS["gpt"](), timeout=timeout, max_retries=0)
     msgs = [{"role": "system", "content": system}]
     for i, m in enumerate(messages):
         if i == len(messages) - 1 and m["role"] == "user" and any(f["kind"] == "image" for f in files):
@@ -259,12 +259,13 @@ def call(provider, tier, system, messages, files=(), thinking=False, max_tokens=
     for model in pick_models(provider, tier):
         for attempt in (1, 2):
             try:
+                to = 45 if tier == "fast" else (300 if max_tokens > 8000 or thinking else 120)
                 if provider == "claude":
-                    t, s = _claude(model, system, messages, files, thinking, max_tokens)
+                    t, s = _claude(model, system, messages, files, thinking, max_tokens, to)
                 elif provider == "gemini":
-                    t, s = _gemini(model, system, messages, files, thinking, max_tokens, grounded)
+                    t, s = _gemini(model, system, messages, files, thinking, max_tokens, grounded, to)
                 else:
-                    t, s = _gpt(model, system, messages, files, thinking, max_tokens)
+                    t, s = _gpt(model, system, messages, files, thinking, max_tokens, to)
                 if not t.strip():
                     raise AIError("The model returned an empty answer.")
                 return t, model, s
@@ -283,11 +284,21 @@ def call(provider, tier, system, messages, files=(), thinking=False, max_tokens=
     raise AIError(f"{LABEL[provider]} could not run: {str(last)[:160] if last else 'no usable model'}")
 
 
+DOWN = {}          # provider -> time until it is skipped (after a failure)
+
+
+def mark_down(provider, seconds=300):
+    DOWN[provider] = time.time() + seconds
+
+
 def order_for(route, forced=None):
     """route: list of (provider, tier). forced: provider name from a #tag, or None.
     Returns attempts in order; a forced provider goes first, the rest are fallbacks."""
     on = available()
     attempts = [(p, t) for p, t in route if on.get(p)]
+    healthy = [x for x in attempts if DOWN.get(x[0], 0) < time.time()]
+    if healthy:
+        attempts = healthy + [x for x in attempts if x not in healthy] if not forced else attempts
     if forced:
         tier = next((t for p, t in route if p == forced), route[0][1])
         attempts = [(forced, tier)] + [a for a in attempts if a[0] != forced]
@@ -313,7 +324,9 @@ def run_with_fallback(route, system, messages, files=(), thinking=False, max_tok
             return {"text": text, "model": model, "provider": provider, "sources": sources, "note": " ".join(notes)}
         except AIError as e:
             last = e
-            notes.append(f"{LABEL[provider]} failed, so {('the next model' if provider != attempts[-1][0] else 'no model')} was used.")
+            mark_down(provider)
+            why = str(e).replace(LABEL[provider], "").strip(" :.")[:90]
+            notes.append(f"{LABEL[provider]} failed ({why}).")
     raise AIError(str(last) if last else "No model could answer.")
 
 

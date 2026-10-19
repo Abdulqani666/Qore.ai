@@ -442,7 +442,7 @@ const NS=`xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.
 const $=id=>document.getElementById(id);
 const IDS=["rm","wm","i4","gi","gitext","font","size","hs","force","bw","tight","caps","num","bands","tbl","tb","t1","t2","t3","lg","ib","ic","im","it","mt","ml","border","ft","pn","pos","fline"];
 const PRE={
-exam:{rm:true,font:"Verdana",size:12,hs:14,force:true,bw:true,tight:true,caps:"headings",num:"auto",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"MONTHLY EXAMINATION",lg:true,wm:true,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:true,ic:"",im:"",it:"",mt:15,ml:18,border:true,ft:"EXAMINATION BOARD",pn:"x",pos:"right",fline:true},
+exam:{rm:true,font:"Verdana",size:12,hs:14,force:true,bw:true,tight:true,caps:"headings",num:"auto",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"",lg:true,wm:true,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:true,ic:"",im:"",it:"",mt:15,ml:18,border:true,ft:"EXAMINATION BOARD",pn:"x",pos:"right",fline:true},
 plain:{rm:false,font:"Times New Roman",size:12,hs:14,force:false,bw:false,tight:false,caps:"none",num:"none",bands:false,tbl:false,tb:false,t1:"",t2:"",t3:"",lg:false,wm:false,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:false,ic:"",im:"",it:"",mt:25,ml:25,border:false,ft:"",pn:"n",pos:"center",fline:false}};
 const get=()=>Object.fromEntries(IDS.map(i=>[i,$(i).type==="checkbox"?$(i).checked:$(i).value]));
 const put=o=>IDS.forEach(i=>{if(!(i in o))return;$(i).type==="checkbox"?$(i).checked=!!o[i]:$(i).value=o[i]});
@@ -1138,12 +1138,12 @@ function titleXml(o,tw,use){
  return tbl+rule}
 
 function infoXml(o,tw){
- const f=esc(o.font),sz=Math.round(Math.max(o.size-1,8)*2),yr=new Date().getFullYear(),h=Math.round(tw/2);
+ const f=esc(o.font),sz=Math.round(Math.max(o.size,8)*2),yr=new Date().getFullYear(),mo=new Date().getMonth()+1,h=Math.round(tw/2);o.i4=true;
  const bd=["top","left","bottom","right","insideH","insideV"].map(e=>`<w:${e} w:val="single" w:sz="6" w:space="0" w:color="000000"/>`).join("");
  const rp=b=>`<w:rPr>${rfx(f)}${b?"<w:b/><w:bCs/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
- const cell=(label,val)=>`<w:tc><w:tcPr><w:tcW w:w="${h}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="70" w:after="70"/></w:pPr><w:r>${rp(1)}<w:t xml:space="preserve">${esc(label)} </w:t></w:r><w:r>${rp(0)}<w:t xml:space="preserve">${esc(val)}</w:t></w:r></w:p></w:tc>`;
+ const cell=(label,val)=>`<w:tc><w:tcPr><w:tcW w:w="${h}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="110" w:after="110"/></w:pPr><w:r>${rp(1)}<w:t xml:space="preserve">${esc(label)} </w:t></w:r><w:r>${rp(/_{3}/.test(val)?0:1)}<w:t xml:space="preserve">${esc(val)}</w:t></w:r></w:p></w:tc>`;
  const u=n=>"_".repeat(n);
- const rows=o.i4?[[["Class:",o.ic||u(8)],["Term:",u(14)]],[["Time Allowed:",o.itime||u(14)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]]:[[["Class:",o.ic||u(8)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]];
+ const rows=o.i4?[[["Class:",o.ic||u(8)],["Term:",u(14)]],[["Time Allowed:",o.itime||u(14)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`______ / ${mo} / ${yr}`],["Teacher:",o.it||u(24)]]]:[[["Class:",o.ic||u(8)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]];
  const tbl=`<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${bd}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="${h}"/><w:gridCol w:w="${tw-h}"/></w:tblGrid>${rows.map(r=>`<w:tr>${cell(...r[0])}${cell(...r[1])}</w:tr>`).join("")}</w:tbl>`;
  return tbl+`<w:p><w:pPr><w:spacing w:before="0" w:after="120"/></w:pPr></w:p>`}
 
@@ -1190,6 +1190,7 @@ async function build(o){
    qa(pp,"spacing").forEach(e=>e.remove());pp.appendChild(mk(st,"spacing",{after:"60",line:"252",lineRule:"auto"}));
    qa(st,"style").forEach(s=>{if(attr(s,"styleId")==="Normal")qa(s,"spacing").forEach(e=>e.remove())});
   }
+  qa(st,"i").concat(qa(st,"iCs"),qa(st,"u")).forEach(e=>e.remove());
   if(o.bw)qa(st,"color").concat(qa(st,"highlight"),qa(st,"shd")).forEach(e=>e.remove());
   qa(st,"style").forEach(s=>{
    const keep=!o.force&&attr(s,"styleId")!=="Normal"&&!(s.getAttributeNS(W,"default")==="1");
@@ -1342,14 +1343,45 @@ async function build(o){
   const a=mk(doc,"sz",{val:v}),b=mk(doc,"szCs",{val:v});
   const nxt=Array.from(rp.children).find(c=>["highlight","u","effect","bdr","shd","fitText","vertAlign","rtl","cs","em","lang","eastAsianLayout","specVanish","oMath"].includes(c.localName));
   nxt?(rp.insertBefore(a,nxt),rp.insertBefore(b,nxt)):(rp.appendChild(a),rp.appendChild(b))};
- let titled=0;
+ let titled=0;const titleSet=new Set();
  qa(doc,"p").forEach(p=>{
   if(inTable(p)||bandP(p)&&o.bands)return;
   const hh=hintOf(p),t=text(p).trim();if(hh.has("untitle"))return;
   if(!t||(!hh.has("title")&&(t.length>70||/\?\s*$/.test(t)||/^\d{1,3}\s*[.\-)]/.test(t))))return;
   const ps=qa(p,"pStyle")[0],styled=ps&&/^(heading|title|subtitle)/i.test(attr(ps,"val"));
   const rs=qa(p,"r").filter(r=>qa(r,"t").some(x=>x.textContent.trim()));
-  if(hh.has("title")||styled||(rs.length&&rs.every(isBold))){rs.forEach(r=>{setSz(r,String(Math.round(o.hs*2)));if(hh.has("title")&&!isBold(r)){let rp=qa(r,"rPr")[0];if(rp)rp.insertBefore(mk(doc,"b"),rp.firstChild)}});titled++}});
+  if(hh.has("title")||styled||(rs.length&&rs.every(isBold))){rs.forEach(r=>{setSz(r,String(Math.round(o.hs*2)));if(hh.has("title")&&!isBold(r)){let rp=qa(r,"rPr")[0];if(rp)rp.insertBefore(mk(doc,"b"),rp.firstChild)}});titled++;titleSet.add(p)}});
+
+ /* plain text: no italic, no underline, one size, only "1." or "a." numbering */
+ {
+  let fx=0,nsz=0,nn=0;
+  const spaceOnly=r=>!qa(r,"t").some(x=>x.textContent.trim());
+  qa(doc,"r").forEach(r=>{
+   const rp=qa(r,"rPr")[0];if(!rp)return;
+   const bad=qa(rp,"i").concat(qa(rp,"iCs"));bad.forEach(e=>{e.remove();fx++});
+   if(!spaceOnly(r))qa(rp,"u").forEach(e=>{e.remove();fx++})});
+  qa(doc,"p").forEach(p=>{
+   const pr=qa(p,"pPr")[0],mr=pr&&qa(pr,"rPr")[0];
+   if(mr)qa(mr,"i").concat(qa(mr,"iCs")).forEach(e=>e.remove());
+   if(titleSet.has(p)||(bandP(p)&&o.bands))return;
+   const sz=String(Math.round(o.size*2));
+   qa(p,"r").forEach(r=>{if(!qa(r,"t").length&&!qa(r,"tab").length)return;setSz(r,sz);nsz++});
+   if(pr){let m=qa(pr,"rPr")[0];if(m){qa(m,"sz").concat(qa(m,"szCs")).forEach(e=>e.remove());m.appendChild(mk(doc,"sz",{val:sz}));m.appendChild(mk(doc,"szCs",{val:sz}))}}
+   /* typed labels: 1) 1- (1) a) (a) -> 1. a. */
+   const t0=qa(p,"t")[0];
+   if(t0&&!qa(p,"numPr").length){const m=t0.textContent.match(/^(\s*)\(?(\d{1,3}|[A-Za-z])(\)|[-–])\s+(?=\S)/);
+    if(m&&!(m[3]!==")"&&/[A-Za-z]/.test(m[2])&&/^[-–]\s+[A-Z]/.test(t0.textContent.slice(m[0].length-1)))){t0.textContent=m[1]+m[2]+". "+t0.textContent.slice(m[0].length);t0.setAttribute("xml:space","preserve");nn++}
+    else{const m2=t0.textContent.match(/^(\s*)\((\d{1,3}|[A-Za-z])\)\s*/);if(m2){t0.textContent=m2[1]+m2[2]+". "+t0.textContent.slice(m2[0].length);t0.setAttribute("xml:space","preserve");nn++}}}
+  });
+  qa(doc,"p").forEach(p=>{const tx=text(p);if((tx.match(/(^|\s)\(?[A-Da-d]\)(\s|$)/g)||[]).length<2)return;
+   qa(p,"t").forEach(t=>{const n=t.textContent.replace(/(^|\s)\(?([A-Da-d])\)(?=\s|$)/g,"$1$2.");if(n!==t.textContent){t.textContent=n;t.setAttribute("xml:space","preserve");nn++}})});
+  const nf2=zip.file("word/numbering.xml");
+  if(nf2){let ns=await nf2.async("string"),ch=0;
+   ns=ns.replace(/<w:lvlText w:val="([^"]*)"/g,(m,v)=>{if(!/%\d/.test(v))return m;const n=v.replace(/\(?(%\d)\)?[\-–)]?$/,"$1.");if(n!==v)ch++;return `<w:lvlText w:val="${n}"`});
+   ns=ns.replace(/<w:i\/>|<w:iCs\/>/g,"");
+   if(ch)nn+=ch;zip.file("word/numbering.xml",ns)}
+  log.push(["Plain text",`no italics or underline (${fx} removed), all text ${o.size} pt, ${nn} labels set to 1. / a. style`])
+ }
  if(titled)log.push(["Titles",`${titled} title${titled>1?"s":""} at ${o.hs} pt, text at ${o.size} pt`]);
  if(bars)log.push(["Part bars",`${bars} black heading bar${bars>1?"s":""}`]);
  if(o.caps!=="none")log.push(["Capitals",`${caps} paragraphs`]);
@@ -1422,6 +1454,15 @@ async function build(o){
   if(removed)log.push(["Old logo","removed from your file ("+removed+")"]);
  }
  const first8=paras.filter(p=>p.isConnected&&text(p).trim()).slice(0,25).map(text).join("\n");
+ if(o.tb&&o.ib){
+  const TITLEISH=/school|primary|secondary|examination|\bexam\b|\btest\b|assessment/i,SUBJ0=/^\s*([A-Za-z][A-Za-z ]{1,40}?)\s+(examination|exam|test)\b/i;
+  let n=0;
+  for(const p of paras.filter(p=>p.isConnected&&!inTable(p)&&text(p).trim()).slice(0,3)){
+   const t=text(p).trim();if(t.length>80||!TITLEISH.test(t)||(bandP(p)&&o.bands)||/\?/.test(t)||/^\d/.test(t))break;
+   const sm=t.match(SUBJ0);if(sm&&!o.t2)o.t2=(sm[1]+" "+sm[2]).toUpperCase();
+   const gm=t.match(/\b(grade|class)\s*(\d{1,2})\b/i);if(gm&&!o.ic)o.ic=gm[2];
+   p.remove();n++}
+  if(n)log.push(["Title lines",`${n} old title line${n>1?"s":""} replaced by the school header`])}
  const hasInfo=/(^|\n)\s*(magaca|name|student|date|class|grade|fasalka|taariikh)\b/i.test(first8);
  if(hasInfo&&o.ib){
   const pats=[[/\b(grade|class|fasalka|fasal)\s*[:\-–]?\s*([0-9]{1,2}\b|[A-Za-z]{1,8}\b)/i,"ic"],[/\b(total\s*marks|marks|dhibcaha)\s*[:\-–]?\s*(\d{1,3})/i,"im"],[/\b(time(?:\s*allowed)?|duration)\s*[:\-–]?\s*(\d+\s*(?:hours?|hrs?|minutes?|mins?)?(?:\s*(?:and)?\s*\d+\s*(?:minutes?|mins?))?)/i,"itime"],[/\b(student\s*name|name|magaca)\s*[:\-–]?[\s_.…]*/i,null],[/\b(date|taariikh)\s*[:\-–]?[\s_.…\/0-9]*/i,null],[/\b(roll\s*(?:no|number)|teacher)\s*[:\-–]?[\s_.…]*/i,null]];
@@ -1435,12 +1476,11 @@ async function build(o){
    const got={};let left=t;
    const sm=left.match(SUBJ);if(sm){got.t2=(sm[1]+" "+sm[2]).toUpperCase();left=left.replace(SUBJ,"")}
    for(const[re,k]of pats){const m=left.match(re);if(m){if(k)got[k]=m[m.length-1].trim();left=left.replace(re,"")}}
-   if(left.replace(/[\s_.…\/:\-–|]/g,"").length)break;       /* something we do not understand: stop */
-   if(!Object.keys(got).length&&!/(name|date|magaca|taariikh|class|grade)/i.test(t))break;
+   if(!Object.keys(got).length&&!/(name|date|magaca|taariikh|class|grade|fasal|roll|teacher|term\s*[:\-–]|marks\s*[:\-–]|time\s*(allowed)?\s*[:\-–]|duration)/i.test(t))break;
    Object.assign(vals,got);take.push(p)}
   const hasLabel=take.some(p=>/(name|date|magaca|taariikh|class|grade|fasal)/i.test(text(p)));
   const rest=lead.filter(p=>!take.includes(p)).slice(0,1)[0];
-  if(take.length&&hasLabel&&(vals.ic||vals.im||vals.itime||vals.t2)){
+  if(take.length&&hasLabel){
    take.forEach(p=>p.remove());
    if(vals.ic&&!o.ic)o.ic=vals.ic;if(vals.im&&!o.im)o.im=vals.im;if(vals.itime){o.itime=vals.itime;o.i4=true}
    if(vals.t2&&!o.t2)o.t2=vals.t2;
@@ -1453,6 +1493,7 @@ async function build(o){
   zip.file("word/media/fmtlogo."+logo.ext,logo.bytes);
   const cf="[Content_Types].xml",ct=await zip.file(cf).async("string");
   if(!ct.includes(`Extension="${logo.ext}"`))zip.file(cf,ct.replace("</Types>",`<Default Extension="${logo.ext}" ContentType="image/${logo.ext}"/></Types>`))};
+ if(o.tb&&!o.t3&&o.ic&&/^\d{1,2}$/.test(String(o.ic).trim()))o.t3="GRADE "+String(o.ic).trim();
  if(o.tb&&(o.t1||o.t2||o.t3||use)){
   if(use){
    await putLogo();

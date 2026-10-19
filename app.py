@@ -131,9 +131,12 @@ def work(jid, cmd, text, tags, history, prev_doc, ai_files):
         messages = [m for m in history if m.get("text")][-6:] if cmd == "ask" else []
         messages.append({"role": "user", "text": prompt[:MAX_TEXT]})
         step(jid, "Starting...")
+        route, think, mx = spec["route"], spec["thinking"] or tier == "deep", 16000 if spec["kind"] == "doc" else 6000
+        if cmd == "ask" and not ai_files and not tier and len(text) < 300 and "search" not in tags:
+            tier, route, think, mx = "fast", [("gemini", "fast"), ("claude", "fast"), ("gpt", "fast")], False, 1500   # quick chat
         r = ai.run_with_fallback(
-            spec["route"], system_for(cmd), messages, files=ai_files,
-            thinking=spec["thinking"] or tier == "deep", max_tokens=16000 if spec["kind"] == "doc" else 6000,
+            route, system_for(cmd), messages, files=ai_files,
+            thinking=think, max_tokens=mx,
             forced=forced, tier_override=tier, say=lambda m: step(jid, m))
         out = {"kind": spec["kind"], "cmd": cmd, "text": r["text"], "model": r["model"],
                "provider": ai.LABEL[r["provider"]], "note": r["note"],
