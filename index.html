@@ -170,8 +170,9 @@ details.dt{margin-top:8px;font-size:14px;color:var(--mute)}details.dt summary{cu
 /* design sheet */
 #veil{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
 #veil.on{opacity:1;pointer-events:auto}
-#sheet,#fl,#hdrw{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:20px 20px 0 0;max-height:88dvh;display:flex;flex-direction:column;transform:translateY(105%);transition:transform .25s ease;max-width:760px;margin:0 auto}
-#sheet.on,#fl.on,#hdrw.on{transform:none}
+#sheet,#fl,#hdrw,#atc{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:20px 20px 0 0;max-height:88dvh;display:flex;flex-direction:column;transform:translateY(105%);transition:transform .25s ease;max-width:760px;margin:0 auto}
+#sheet.on,#fl.on,#hdrw.on,#atc.on{transform:none}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 12px}.tile{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 8px;border:0;border-radius:18px;background:var(--soft);font-size:15px;font-weight:500}.tile svg{width:28px;height:28px}
 .hi{display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}.hi:last-child{border-bottom:0}.hi button.o{flex:1;text-align:left;background:none;border:0;padding:0;font:inherit;min-width:0}.hi b{display:block;font-weight:500;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hi small{color:var(--mute);font-size:12px}.hi .btn{padding:6px 11px;font-size:13px}
 .au{display:grid;gap:8px;margin-top:8px}.au .tabs{display:flex;gap:6px}.au .tabs button{flex:1}
 .sh-h{display:flex;align-items:center;padding:14px 18px 8px}
@@ -338,6 +339,8 @@ header{position:relative}
   </div>
   <div class="menu" id="mmenu" role="menu" hidden></div>
   <input type="file" id="pick" accept=".docx,.pdf,.txt,.md,image/*" multiple hidden>
+  <input type="file" id="pickCam" accept="image/*" capture="environment" hidden>
+  <input type="file" id="pickImg" accept="image/*" multiple hidden>
   <p class="fine" id="fine"></p>
  </div>
 </div>
@@ -417,6 +420,14 @@ header{position:relative}
 <div id="hdrw" role="dialog" aria-modal="true" aria-label="Chat history" aria-hidden="true">
  <div class="sh-h"><h2>Qore</h2><button class="ghost" id="hsx">Done</button></div>
  <div class="sh-b"><div class="fl-h"><button class="btn pri" id="hnew">New chat</button><button class="btn" id="hout">Sign out</button></div><p class="note" id="hwho"></p><div id="hlist"></div></div>
+</div>
+<div id="atc" role="dialog" aria-modal="true" aria-label="Add files" aria-hidden="true">
+ <div class="sh-h"><h2>Add to chat</h2><button class="ghost" id="atx">Close</button></div>
+ <div class="sh-b"><div class="tiles">
+  <button class="tile" id="tCam" type="button"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>Camera</button>
+  <button class="tile" id="tImg" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>Photos</button>
+  <button class="tile" id="tFile" type="button"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4M12 17v-6M9.5 13.5 12 11l2.5 2.5"/></svg>Files</button>
+ </div><p class="note">Word, PDF, text files and pictures. You can also paste or drop a file here.</p></div>
 </div>
 <div id="pv" role="dialog" aria-modal="true" aria-label="Preview" aria-hidden="true">
  <div class="bar"><b id="pvName"></b><button class="btn pri" id="pvW">Download Word</button><button class="btn" id="pvP">Download PDF</button><button class="btn" id="pvX">Close</button></div>
@@ -612,7 +623,13 @@ let pending=[];
 function tray(){const t=$("tray");t.innerHTML="";pending.forEach((f,i)=>{const d=document.createElement("div");d.className="tg";d.innerHTML=`<span>${esc(f.name)}</span><button type="button" aria-label="Remove ${esc(f.name)}">&times;</button>`;d.querySelector("button").onclick=()=>{pending.splice(i,1);tray()};t.appendChild(d)})}
 function addFiles(list){for(const f of list){if(pending.length>=8)break;if(!/\.(docx|pdf|txt|md)$/i.test(f.name)&&!/^image\//.test(f.type)){say(`<p class="err">${esc(f.name)} cannot be used. Attach Word, PDF, text or a picture.</p>`);continue}pending.push(f)}tray();ta.focus()}
 const pick=$("pick");
-$("plus").onclick=()=>pick.click();
+const atcOpen=()=>{$("veil").classList.add("on");$("atc").classList.add("on");$("atc").setAttribute("aria-hidden","false")};
+const atcClose=()=>{$("atc").classList.remove("on");$("atc").setAttribute("aria-hidden","true");if(!$("sheet").classList.contains("on")&&!$("fl").classList.contains("on")&&!$("hdrw").classList.contains("on"))$("veil").classList.remove("on")};
+$("plus").onclick=atcOpen;$("atx").onclick=atcClose;$("veil").addEventListener("click",atcClose);
+$("tCam").onclick=()=>{atcClose();pickCam.click()};$("tImg").onclick=()=>{atcClose();pickImg.click()};$("tFile").onclick=()=>{atcClose();pick.click()};
+[pickCam,pickImg].forEach(i=>i.onchange=e=>{addFiles(e.target.files);i.value=""});
+ta.addEventListener("paste",e=>{const f=[...(e.clipboardData&&e.clipboardData.files||[])];if(f.length){e.preventDefault();addFiles(f)}});
+["dragover","drop"].forEach(t=>document.addEventListener(t,e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes("Files")){e.preventDefault();if(t==="drop")addFiles(e.dataTransfer.files)}}));
 pick.onchange=e=>{addFiles(e.target.files);pick.value=""};
 ["dragover","dragenter"].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();$("comp").classList.add("on")}));
 ["dragleave","drop"].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();$("comp").classList.remove("on")}));
