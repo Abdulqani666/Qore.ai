@@ -569,7 +569,10 @@ let file=null,buf=null,busy=false;
 let SRV=null,access="";try{access=localStorage.getItem("qore-access")||""}catch(e){}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function api(path,opt={}){
- const r=await fetch(path,{...opt,headers:{...(access?{"X-Access":access}:{}),...(opt.headers||{})}});
+ let r;
+ for(let n=0;;n++){
+  try{r=await fetch(path,{...opt,headers:{...(access?{"X-Access":access}:{}),...(opt.headers||{})}});break}
+  catch(e){if(n>=4)throw new Error("I cannot reach the server. It may be restarting after a change. Wait one minute, then try again.");await sleep(3500)}}
  let j=null;try{j=await r.json()}catch(e){}
  if(r.status===401)throw Object.assign(new Error((j&&j.error)||"Password needed."),{auth:true});
  if(!r.ok)throw new Error((j&&j.error)||("Server error "+r.status));
@@ -807,7 +810,7 @@ async function poll(job,bubble,limit=900000){
  const t0=Date.now();let bad=0;
  for(;;){
   await sleep(1500);let j;
-  try{j=await api("/api/job/"+job);bad=0}catch(e){if(e.auth||++bad>6||/gone/.test(e.message))throw e;continue}
+  try{j=await api("/api/job/"+job);bad=0}catch(e){if(e.auth||++bad>30||/gone/.test(e.message))throw e;continue}
   if(bubble)working(bubble,j.steps);
   if(j.state==="done")return j.result;
   if(j.state==="error"||j.state==="lost")throw new Error(j.error||"The task failed.");
