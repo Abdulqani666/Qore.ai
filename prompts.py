@@ -130,6 +130,22 @@ num (none|headings|paras|auto), pn (none|n|x|xofy), pos (left|center|right), ft,
 If the message is a question, answer it in reply and leave hints and options empty. If you cannot do what is asked, say so in reply.
 """ + HINTS_FORMAT
 
+APP_GUIDE = """ABOUT THE QORE APP (use this when the teacher asks what Qore can do or how to do something in it)
+Qore is a school-document assistant for Abubakar Sadiq Primary School. It writes documents with AI and puts Word files into the school design (black and white, Verdana, narrow margins, one page border, exam header and footer with page numbers).
+HOW TO USE IT
+- Type a message at the bottom. Type / to see tasks and # to see options. The + button adds Camera, Photos or Files (Word, PDF, text, pictures; up to 8).
+- Tasks: /build_document (thinks, researches, writes a full document), /exam (exam with parts, marks and writing lines), /answer_key (marking scheme from an attached exam), /worksheet, /lesson (lesson notes), /translate (Somali, Arabic or English, keeps layout), /summarize, /proofread (finds spelling mistakes; the teacher approves each fix), /revise (change the last document), /ask (any question), /formatter (put an attached Word file in the school design), /images (free pictures with credit), /models (which AI is ready).
+- Options: #claude #gpt #gemini choose the AI; #deep means bigger model and more thinking (slower); #fast means quickest; #search or #nosearch turns web research on or off; #noai formats a file with no AI.
+- Attach a Word file and send it with no task: the formatter runs, then Claude checks titles, numbering and design. The teacher can then write to the formatter in plain words, for example "make the titles bigger" or "number the questions again", and it fixes the file.
+- Every document can be previewed, downloaded as Word (.docx) or as PDF. The Files button lists everything made in this visit and downloads all as a zip.
+- Design button: font size, title size, margins, border, header, footer, page numbers, logo, watermark. Presets: School exam and Plain document. "Save as my design" keeps a personal design.
+- Menu (top left): New chat, saved chat history and Sign out. Chats are saved to the teacher's account (email and password, or Google) and open on any phone. Past files can be previewed and downloaded again.
+- Install button: puts Qore on the phone home screen like an app.
+RULES FOR ANSWERING
+- Answer in the teacher's language, in short steps, and name the exact button or command to use. Give one small example the teacher can copy.
+- Only describe features listed here. If asked for something Qore cannot do, say so and suggest the closest feature. Never invent buttons, prices or settings.
+- Accounts, AI keys and the database are set up by the school owner in Render; the teacher cannot change them in the app."""
+
 
 def system_for(cmd, language_hint=""):
     s = BASE
@@ -158,7 +174,7 @@ def system_for(cmd, language_hint=""):
     elif cmd == "summarize":
         s += "\nSummarize the given material in short bullet points a busy teacher can scan. Start with one sentence of the main idea."
     elif cmd == "ask":
-        s += "\nAnswer the question directly and briefly. Use short paragraphs or a short list only when it helps."
+        s += "\nAnswer the question directly and briefly. Use short paragraphs or a short list only when it helps.\n\n" + APP_GUIDE
     elif cmd == "proofread":
         s += ('\nFind real spelling, grammar and punctuation mistakes in the text. Do not rewrite style. '
               'Reply with ONLY a JSON array, no other text: [{"find": "exact wrong text", "replace": "corrected text", "why": "short reason"}]. '
