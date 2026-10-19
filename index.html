@@ -625,7 +625,10 @@ ta.addEventListener("keydown",e=>{
 /* attachments */
 let pending=[];
 function tray(){const t=$("tray");t.innerHTML="";pending.forEach((f,i)=>{const d=document.createElement("div");d.className="tg";d.innerHTML=`<span>${esc(f.name)}</span><button type="button" aria-label="Remove ${esc(f.name)}">&times;</button>`;d.querySelector("button").onclick=()=>{pending.splice(i,1);tray()};t.appendChild(d)})}
-function addFiles(list){for(const f of list){if(pending.length>=8)break;if(!/\.(docx|pdf|txt|md)$/i.test(f.name)&&!/^image\//.test(f.type)){say(`<p class="err">${esc(f.name)} cannot be used. Attach Word, PDF, text or a picture.</p>`);continue}pending.push(f)}tray();ta.focus()}
+async function addFiles(list){for(const f of Array.from(list)){if(pending.length>=8)break;if(!/\.(docx|pdf|txt|md)$/i.test(f.name)&&!/^image\//.test(f.type)){say(`<p class="err">${esc(f.name)} cannot be used. Attach Word, PDF, text or a picture.</p>`);continue}
+ try{pending.push(new File([await f.arrayBuffer()],f.name||"file",{type:f.type||""}))}      /* copy into memory now: phone file pickers can lose the original before upload */
+ catch(e){say(`<p class="err">I could not read ${esc(f.name)}. Pick it again, or copy it to your Downloads folder first.</p>`)}}
+ tray();ta.focus()}
 const pick=$("pick");
 const atcOpen=()=>{$("veil").classList.add("on");$("atc").classList.add("on");$("atc").setAttribute("aria-hidden","false")};
 const atcClose=()=>{$("atc").classList.remove("on");$("atc").setAttribute("aria-hidden","true");if(!$("sheet").classList.contains("on")&&!$("fl").classList.contains("on")&&!$("hdrw").classList.contains("on"))$("veil").classList.remove("on")};
