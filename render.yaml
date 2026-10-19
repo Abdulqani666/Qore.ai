@@ -1,14 +1,10 @@
 services:
   - type: web
-    name: qore-ai-app
-    runtime: python
+    name: qore-app
+    runtime: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --workers 1 --threads 8 --timeout 120
     healthCheckPath: /healthz
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.8
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: OPENAI_API_KEY

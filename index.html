@@ -98,6 +98,14 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke
 .gi .btn{padding:4px 10px;font-size:12.5px}
 .pw{display:flex;gap:8px;margin-top:8px}
 .pw input{flex:1}
+/* preview */
+#pv{position:fixed;inset:0;z-index:30;background:var(--bg);display:none;flex-direction:column}
+#pv.on{display:flex}
+#pv .bar{display:flex;gap:8px;align-items:center;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#pv .bar b{flex:1;min-width:120px;font:600 15px/1.2 Georgia,serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pvBody{flex:1;overflow:auto;padding:12px;background:#d9d8d3;-webkit-overflow-scrolling:touch}
+#pvBody section.docx{margin:0 auto 12px!important;box-shadow:0 1px 6px rgba(0,0,0,.25)}
+#pv .hint{font-size:12.5px;color:var(--mute);padding:6px 12px calc(8px + env(safe-area-inset-bottom,0px));text-align:center}
 /* design sheet */
 #veil{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
 #veil.on{opacity:1;pointer-events:auto}
@@ -121,7 +129,7 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
 @media print{
  @page{size:A4;margin:0}
  body.printing{background:#fff}
- body.printing .app,body.printing #sheet,body.printing #veil{display:none!important}
+ body.printing .app,body.printing #sheet,body.printing #veil,body.printing #pv{display:none!important}
  body.printing #printArea{display:block}
  body.printing #printArea section.docx{box-shadow:none!important;margin:0!important;break-after:page}
 }
@@ -216,6 +224,11 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
  </div>
  <div class="sh-f"><button class="btn" id="save">Save as my design</button><button class="btn pri" id="apply">Done</button></div>
 </div>
+<div id="pv" role="dialog" aria-modal="true" aria-label="Preview" aria-hidden="true">
+ <div class="bar"><b id="pvName"></b><button class="btn pri" id="pvW">Download Word</button><button class="btn" id="pvP">Download PDF</button><button class="btn" id="pvX">Close</button></div>
+ <div id="pvBody"></div>
+ <p class="hint" id="pvHint"></p>
+</div>
 <div id="printArea"></div>
 
 <script>
@@ -272,11 +285,67 @@ async function saveBytes(name,data,type){
 async function toPdf(data){
  const area=$("printArea");area.innerHTML="";
  await docx.renderAsync(new Blob([data]),area,null,{className:"docx",inWrapper:false,breakPages:true,ignoreLastRenderedPageBreak:false});
- try{await document.fonts.ready}catch(e){}
+ fixDocx(area);try{await document.fonts.ready}catch(e){}
  document.body.classList.add("printing");
  const done=()=>{document.body.classList.remove("printing");area.innerHTML="";window.removeEventListener("afterprint",done)};
  window.addEventListener("afterprint",done);
  setTimeout(()=>window.print(),200)}
+
+/* ---------- preview ---------- */
+function fixDocx(root){
+ const f=get().font,serif=/times|georgia|garamond|cambria/i.test(f);
+ let st=root.querySelector("style.fx");if(!st){st=document.createElement("style");st.className="fx";root.prepend(st)}
+ st.textContent=`.docx,.docx *{font-family:"${f}",${serif?'"Times New Roman",serif':'Verdana,Arial,"DejaVu Sans",sans-serif'} !important}`;
+ root.querySelectorAll("section.docx").forEach(sec=>{
+  sec.style.position="relative";
+  sec.querySelectorAll("header").forEach(h=>{h.style.position="static"});
+  sec.querySelectorAll("header img").forEach(im=>{im.style.cssText+=";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:.12;z-index:0;max-width:none;margin:0"})})}
+const WORDMIME="application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const pdfCache=new WeakMap();
+async function fetchBlob(path){const r=await fetch(path,{headers:access?{"X-Access":access}:{}});if(!r.ok)throw new Error("Could not load the file.");return await r.blob()}
+async function ensureServer(){if(!SRV)await loadStatus();if(!SRV)return false;if(SRV.locked&&!SRV.authed)await askPass();return !!(SRV&&SRV.pdf)}
+function getPdf(data){
+ if(pdfCache.has(data))return pdfCache.get(data);
+ const p=(async()=>{
+  if(!await ensureServer())return null;
+  const fd=new FormData();fd.append("file",new Blob([data],{type:WORDMIME}),"doc.docx");
+  const{job}=await api("/api/pdf",{method:"POST",body:fd});
+  return await poll(job,null,200000)})().catch(e=>{pdfCache.delete(data);console.warn("pdf",e.message);return null});
+ pdfCache.set(data,p);return p}
+async function downloadPdf(name,data,btn){
+ if(btn){btn.disabled=true;btn.dataset.t=btn.textContent;btn.textContent="Making PDF..."}
+ try{
+  const r=await getPdf(data);
+  if(r){saveBytes(name.replace(/\.docx$/i,".pdf"),await fetchBlob("/api/pdf/"+r.id),"application/pdf")}
+  else{say("<p>The PDF maker is not available here, so I opened the print window. Choose <b>Save as PDF</b> in it.</p>");await toPdf(data)}
+ }catch(x){say(`<p class="err">Could not make the PDF: ${esc(x.message)}. Download the Word file instead.</p>`)}
+ if(btn){btn.disabled=false;btn.textContent=btn.dataset.t}}
+let pvUrls=[];
+async function openPreview(name,data){
+ $("pvName").textContent=name;const body=$("pvBody");body.innerHTML='<p style="text-align:center;padding:40px 16px;color:#444">Making the PDF preview...</p>';
+ $("pv").classList.add("on");$("pv").setAttribute("aria-hidden","false");
+ $("pvW").onclick=()=>saveBytes(name,data,WORDMIME);
+ $("pvP").onclick=e=>downloadPdf(name,data,e.currentTarget);
+ const r=await getPdf(data);
+ if(!$("pv").classList.contains("on"))return;
+ body.innerHTML="";
+ if(r){
+  $("pvHint").textContent="This is your real PDF, page by page. Pinch to zoom.";
+  for(let n=1;n<=r.pages;n++){
+   try{const u=URL.createObjectURL(await fetchBlob(`/api/pdf/${r.id}/page/${n}`));pvUrls.push(u);
+    const im=document.createElement("img");im.src=u;im.alt="Page "+n;im.style.cssText="display:block;width:100%;max-width:840px;margin:0 auto 12px;box-shadow:0 1px 6px rgba(0,0,0,.25);background:#fff";body.appendChild(im)}
+   catch(e){body.insertAdjacentHTML("beforeend",`<p class="err">Page ${n} could not be drawn.</p>`)}}
+  return}
+ $("pvHint").textContent="Approximate preview only. The PDF made here uses your browser's print window.";
+ try{
+  await docx.renderAsync(new Blob([data]),body,null,{className:"docx",inWrapper:false,breakPages:true,ignoreLastRenderedPageBreak:false});
+  fixDocx(body);
+  const secs=[...body.querySelectorAll("section.docx")];
+  if(secs[0]){const pw=secs[0].getBoundingClientRect().width,k=Math.min(1,(body.clientWidth-24)/pw);if(k<1)secs.forEach(x=>{x.style.zoom=k})}
+ }catch(e){body.innerHTML='<p class="err" style="padding:16px">I could not draw the preview: '+esc(e.message)+'. You can still download the files.</p>'}}
+function closePreview(){$("pv").classList.remove("on");$("pv").setAttribute("aria-hidden","true");$("pvBody").innerHTML="";pvUrls.forEach(u=>URL.revokeObjectURL(u));pvUrls=[]}
+$("pvX").onclick=closePreview;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("pv").classList.contains("on"))closePreview()});
 
 /* ---------- files ---------- */
 let file=null,buf=null,busy=false;
@@ -426,10 +495,11 @@ async function docResult(r,t){
  const{data}=await buildFrom(bytes,designFor(r.cmd,meta));
  const name=slug(meta.title||r.cmd)+".docx";
  lastDoc={md:r.text,meta,cmd:r.cmd};
- t.innerHTML=`<p>Your document is ready.</p>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Save as PDF</button><button class="btn" data-a="chg">Change it</button>${r.cmd==="exam"?'<button class="btn" data-a="key">Make marking scheme</button>':""}<button class="btn" data-a="txt">Show text</button></div>`+foot(r);
+ t.innerHTML=`<p>Your document is ready.</p>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="view">Preview</button><button class="btn" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Download PDF</button><button class="btn" data-a="chg">Change it</button>${r.cmd==="exam"?'<button class="btn" data-a="key">Make marking scheme</button>':""}<button class="btn" data-a="txt">Show text</button></div>`+foot(r);
  const q=a=>t.querySelector(`[data-a=${a}]`);
- q("docx").onclick=()=>saveBytes(name,data,"application/vnd.openxmlformats-officedocument.wordprocessingml.document");
- q("pdf").onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{await toPdf(data)}catch(x){say(`<p class="err">Could not make the PDF: ${esc(x.message)}. Download the Word file instead.</p>`)}b.disabled=false};
+ q("view").onclick=()=>openPreview(name,data);
+ q("docx").onclick=()=>saveBytes(name,data,WORDMIME);
+ q("pdf").onclick=e=>downloadPdf(name,data,e.currentTarget);
  q("chg").onclick=()=>{ta.value="/revise ";ta.focus()};
  q("txt").onclick=()=>say(lite(r.text));
  const k=q("key");if(k)k.onclick=()=>runAI("answer_key","Write the marking scheme for this exam:\n\n"+r.text,[],[]);
@@ -546,9 +616,10 @@ async function format(tags=[]){
   await new Promise(r=>setTimeout(r,400));
   const o=get(),note=await aiAssist(o,tags);const{data,log}=await build(o);if(note)log.unshift(note);
   const name=file.name.replace(/\.docx$/i,"")+"_formatted.docx";
-  t.innerHTML=`<p>Done. Your document is in the new design.</p><ul class="steps">${log.map(l=>`<li><b>${esc(l[0])}</b>: ${esc(l[1])}</li>`).join("")}</ul>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Save as PDF</button><button class="btn" data-a="again">Format again</button></div>`;
+  t.innerHTML=`<p>Done. Your document is in the new design.</p><ul class="steps">${log.map(l=>`<li><b>${esc(l[0])}</b>: ${esc(l[1])}</li>`).join("")}</ul>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="view">Preview</button><button class="btn" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Download PDF</button><button class="btn" data-a="again">Format again</button></div>`;
+  t.querySelector('[data-a=view]').onclick=()=>openPreview(name,data);
   t.querySelector('[data-a=docx]').onclick=()=>saveBytes(name,data,"application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-  t.querySelector('[data-a=pdf]').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{await toPdf(data)}catch(x){say(`<p class="err">Could not make the PDF: ${esc(x.message)}. Download the Word file and save it as PDF from Word.</p>`)}b.disabled=false};
+  t.querySelector('[data-a=pdf]').onclick=e=>downloadPdf(name,data,e.currentTarget);
   t.querySelector('[data-a=again]').onclick=()=>format(tags);
   down();
  }catch(e){t.innerHTML=`<p class="err">I could not format this file: ${esc(e.message)}</p><div class="acts"><button class="btn" data-a="retry">Try again</button></div>`;t.querySelector("[data-a=retry]").onclick=()=>format(tags)}
@@ -616,7 +687,7 @@ function infoXml(o,tw){
  const rp=b=>`<w:rPr>${rfx(f)}${b?"<w:b/><w:bCs/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
  const cell=(label,val)=>`<w:tc><w:tcPr><w:tcW w:w="${h}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="70" w:after="70"/></w:pPr><w:r>${rp(1)}<w:t xml:space="preserve">${esc(label)} </w:t></w:r><w:r>${rp(0)}<w:t xml:space="preserve">${esc(val)}</w:t></w:r></w:p></w:tc>`;
  const u=n=>"_".repeat(n);
- const rows=o.i4?[[["Class:",o.ic||u(8)],["Term:",u(14)]],[["Time Allowed:",u(14)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]]:[[["Class:",o.ic||u(8)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]];
+ const rows=o.i4?[[["Class:",o.ic||u(8)],["Term:",u(14)]],[["Time Allowed:",o.itime||u(14)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]]:[[["Class:",o.ic||u(8)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]];
  const tbl=`<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${bd}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="${h}"/><w:gridCol w:w="${tw-h}"/></w:tblGrid>${rows.map(r=>`<w:tr>${cell(...r[0])}${cell(...r[1])}</w:tr>`).join("")}</w:tbl>`;
  return tbl+`<w:p><w:pPr><w:spacing w:before="0" w:after="120"/></w:pPr></w:p>`}
 
@@ -641,8 +712,11 @@ async function build(o){
 
  /* styles: font, size, colors, spacing */
  const sf=zip.file("word/styles.xml");
+ const numStyles=new Set();
  if(sf){
   const st=P.parseFromString(await sf.async("string"),"application/xml");
+  qa(st,"style").forEach(x=>{if(qa(x,"numPr").length)numStyles.add(attr(x,"styleId"))});
+  qa(st,"style").forEach(x=>{const b=qa(x,"basedOn")[0];if(b&&numStyles.has(attr(b,"val")))numStyles.add(attr(x,"styleId"))});
   qa(st,"rFonts").forEach(e=>{while(e.attributes.length)e.removeAttributeNode(e.attributes[0]);["ascii","hAnsi","eastAsia","cs"].forEach(k=>e.setAttributeNS(W,"w:"+k,o.font))});
   let dd=qa(st,"docDefaults")[0];
   if(!dd){dd=mk(st,"docDefaults");st.documentElement.insertBefore(dd,st.documentElement.firstChild)}
@@ -762,18 +836,44 @@ async function build(o){
  /* numbering and title size */
  if(o.num==="auto"){
   const OPT=/^\s*[A-Za-zÀ-ɏ]{1,2}[.)]\s/;
+  const numRe=/^\s*(\d{1,3})\s*[-–.)]\s*(?!\d)/;
   let seg=[],segs=[seg];
   qa(doc,"p").forEach(p=>{if(inTable(p))return;const t=text(p).trim();if(!t)return;if(o.bands&&isBand(p)){seg=[];segs.push(seg);return}seg.push(p)});
-  let fixed=0,added=0;
+  const jobs=[];
   segs.forEach(sg=>{
-   const cand=sg.filter(p=>{const t=text(p).trim();return !isHeading(p)&&!/^[_.\s]+$/.test(t)&&!OPT.test(t)&&(/\?\s*$/.test(t)||/_{3,}|\.{4,}/.test(t))});
-   const numRe=/^\s*(\d{1,3})\s*[-–.)]\s*/;
-   sg.forEach(p=>{const t0=qa(p,"t")[0];if(!t0)return;const m=t0.textContent.match(numRe);
-    if(m&&!/^\s*\d{1,3}\.\s/.test(t0.textContent)){t0.textContent=m[1]+". "+t0.textContent.slice(m[0].length);t0.setAttribute("xml:space","preserve");fixed++}});
-   const anyNum=sg.some(p=>numRe.test(text(p)));
-   if(!anyNum&&cand.length>=2){let k=0;cand.forEach(p=>{const t0=qa(p,"t").find(x=>x.textContent.length);if(!t0)return;k++;t0.textContent=k+". "+t0.textContent;t0.setAttribute("xml:space","preserve");added++})}
-  });
-  if(fixed||added)log.push(["Numbering",`${fixed?fixed+" fixed to 1. 2. 3. style":""}${fixed&&added?", ":""}${added?added+" questions numbered":""}`]);
+   if(sg.some(p=>qa(p,"numPr").length||numStyles.has(attr(qa(p,"pStyle")[0]||p,"val"))))return;                       /* already real numbering: leave it */
+   const typed=sg.filter(p=>{const t0=qa(p,"t")[0];return t0&&numRe.test(t0.textContent)&&!isHeading(p)});
+   if(typed.length){jobs.push({ps:typed,start:+qa(typed[0],"t")[0].textContent.match(numRe)[1],strip:true});return}
+   const cand=sg.filter(p=>{const t=text(p).trim();return !isHeading(p)&&!/^[_.\s]+$/.test(t)&&!OPT.test(t)&&!/^\s*(answer|ans|jawaab|tusaale)\b/i.test(t)&&(/\?\s*$/.test(t)||/_{3,}|\.{4,}/.test(t))});
+   if(cand.length>=2)jobs.push({ps:cand,start:1,strip:false})});
+  if(jobs.length){
+   const nf="word/numbering.xml";let nx=zip.file(nf)?P.parseFromString(await zip.file(nf).async("string"),"application/xml"):null;
+   if(!nx){nx=P.parseFromString(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="${W}"/>`,"application/xml");
+    const rf="word/_rels/document.xml.rels",rels=await zip.file(rf).async("string");
+    zip.file(rf,rels.replace("</Relationships>",`<Relationship Id="rIdFmtNum" Type="${R}/numbering" Target="numbering.xml"/></Relationships>`));
+    const cf="[Content_Types].xml",ct=await zip.file(cf).async("string");
+    zip.file(cf,ct.replace("</Types>",`<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>`))}
+   const root=nx.documentElement,mx=t=>Math.max(0,...qa(nx,t).map(e=>+attr(e,t==="abstractNum"?"abstractNumId":"numId")||0));
+   let aid=mx("abstractNum"),nid=mx("num");
+   const anchor=qa(nx,"num")[0];
+   const ORD=["cnfStyle","pStyle","keepNext","keepLines","pageBreakBefore","framePr","widowControl"];
+   jobs.forEach(j=>{
+    j.aid=++aid;j.id=++nid;
+    const ab=frag(nx,`<w:abstractNum w:abstractNumId="${j.aid}"><w:multiLevelType w:val="singleLevel"/><w:lvl w:ilvl="0"><w:start w:val="${j.start}"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:lvlJc w:val="left"/><w:pPr><w:tabs><w:tab w:val="num" w:pos="425"/></w:tabs><w:ind w:left="425" w:hanging="425"/></w:pPr></w:lvl></w:abstractNum>`)[0];
+    anchor?root.insertBefore(ab,anchor):root.appendChild(ab)});
+   let total=0;
+   jobs.forEach(j=>{
+    root.appendChild(frag(nx,`<w:num w:numId="${j.id}"><w:abstractNumId w:val="${j.aid}"/></w:num>`)[0]);
+    j.ps.forEach(p=>{
+     if(j.strip){const t0=qa(p,"t")[0];t0.textContent=t0.textContent.replace(numRe,"");t0.setAttribute("xml:space","preserve")}
+     let pp=qa(p,"pPr")[0];if(!pp){pp=mk(doc,"pPr");p.insertBefore(pp,p.firstChild)}
+     qa(pp,"numPr").concat(qa(pp,"ind"),qa(pp,"tabs")).forEach(e=>e.remove());
+     const np=mk(doc,"numPr");np.appendChild(mk(doc,"ilvl",{val:"0"}));np.appendChild(mk(doc,"numId",{val:String(j.id)}));
+     const after=Array.from(pp.children).filter(c=>ORD.includes(c.localName)).pop();
+     after?after.after(np):pp.insertBefore(np,pp.firstChild);total++})});
+   jobs.forEach(j=>{const sgi=segs.find(sg=>sg.includes(j.ps[0]));(sgi||[]).forEach(p=>{if(j.ps.includes(p)||!/^\s*[A-Da-d][.)]\s/.test(text(p)))return;let pp=qa(p,"pPr")[0];if(!pp){pp=mk(doc,"pPr");p.insertBefore(pp,p.firstChild)}qa(pp,"ind").forEach(e=>e.remove());const ind=mk(doc,"ind",{left:"425"});const nx2=Array.from(pp.children).find(c=>["contextualSpacing","mirrorIndents","jc","textDirection","outlineLvl","rPr","sectPr"].includes(c.localName));nx2?pp.insertBefore(ind,nx2):pp.appendChild(ind)})});
+   zip.file(nf,S.serializeToString(nx));
+   log.push(["Numbering",`${total} question${total===1?"":"s"} use real Word numbering (1. 2. 3.), restarting in each part`])}
  }
  const setSz=(r,v)=>{let rp=qa(r,"rPr")[0];if(!rp){rp=mk(doc,"rPr");r.insertBefore(rp,r.firstChild)}
   qa(rp,"sz").concat(qa(rp,"szCs")).forEach(e=>e.remove());
@@ -790,7 +890,7 @@ async function build(o){
  if(titled)log.push(["Titles",`${titled} title${titled>1?"s":""} at ${o.hs} pt, text at ${o.size} pt`]);
  if(bars)log.push(["Part bars",`${bars} black heading bar${bars>1?"s":""}`]);
  if(o.caps!=="none")log.push(["Capitals",`${caps} paragraphs`]);
- if(o.num!=="none")log.push(["Numbering",`${nums} paragraphs numbered`]);
+ if(o.num==="headings"||o.num==="paras")log.push(["Numbering",`${nums} paragraphs numbered`]);
 
  /* sections, margins, border, footer */
  const body=qa(doc,"body")[0];let secs=qa(doc,"sectPr");
@@ -801,13 +901,15 @@ async function build(o){
  secs.forEach(sp=>{
   let sz=qa(sp,"pgSz")[0];
   if(!sz){sz=mk(doc,"pgSz",{w:11906,h:16838});sp.insertBefore(sz,sp.firstChild)}
+  {const land=(+attr(sz,"w")||0)>(+attr(sz,"h")||0);sz.setAttributeNS(W,"w:w",land?"16838":"11906");sz.setAttributeNS(W,"w:h",land?"11906":"16838")}
   width=+attr(sz,"w")||11906;
   qa(sp,"pgMar").concat(qa(sp,"pgBorders")).forEach(e=>e.remove());
-  const mar=mk(doc,"pgMar",{top:tm,right:lm,bottom:tm,left:lm,header:Math.min(708,Math.round(tm/2)),footer:Math.min(708,Math.round(tm/2)),gutter:0});
+  const bm=o.border||footerOn?Math.max(tm,tw0(19)):tm;
+  const mar=mk(doc,"pgMar",{top:tm,right:lm,bottom:bm,left:lm,header:Math.min(708,Math.round(tm/2)),footer:o.border?tw0(11):Math.min(708,Math.round(tm/2)),gutter:0});
   sz.after(mar);
   if(o.border){
    const b=mk(doc,"pgBorders",{offsetFrom:"page"});
-   ["top","left","bottom","right"].forEach(e=>b.appendChild(mk(doc,e,{val:"single",sz:6,space:24,color:"000000"})));
+   ["top","left","bottom","right"].forEach(e=>b.appendChild(mk(doc,e,{val:"single",sz:6,space:18,color:"000000"})));
    mar.after(b);
   }
   if(footerOn){
@@ -858,7 +960,30 @@ async function build(o){
  }
  const first8=paras.filter(p=>p.isConnected&&text(p).trim()).slice(0,25).map(text).join("\n");
  const hasInfo=/(^|\n)\s*(magaca|name|student|date|class|grade|fasalka|taariikh)\b/i.test(first8);
- if(hasInfo&&o.ib){o.ib=false;log.push(["Student box","skipped, your document already has Name and Date lines"])}
+ if(hasInfo&&o.ib){
+  const pats=[[/\b(grade|class|fasalka|fasal)\s*[:\-–]?\s*([0-9]{1,2}\b|[A-Za-z]{1,8}\b)/i,"ic"],[/\b(total\s*marks|marks|dhibcaha)\s*[:\-–]?\s*(\d{1,3})/i,"im"],[/\b(time(?:\s*allowed)?|duration)\s*[:\-–]?\s*(\d+\s*(?:hours?|hrs?|minutes?|mins?)?(?:\s*(?:and)?\s*\d+\s*(?:minutes?|mins?))?)/i,"itime"],[/\b(student\s*name|name|magaca)\s*[:\-–]?[\s_.…]*/i,null],[/\b(date|taariikh)\s*[:\-–]?[\s_.…\/0-9]*/i,null],[/\b(roll\s*(?:no|number)|teacher)\s*[:\-–]?[\s_.…]*/i,null]];
+  const SUBJ=/^\s*([A-Za-z][A-Za-z ]{1,40}?)\s+(examination|exam|test)\b/i;
+  const textT=p=>Array.from(p.getElementsByTagNameNS(W,"*")).filter(e=>e.localName==="t"||(e.localName==="tab"&&e.parentNode.localName==="r")).map(e=>e.localName==="t"?e.textContent:"  ").join("");
+  const lead=paras.filter(p=>p.isConnected&&!inTable(p)&&text(p).trim());
+  const take=[],vals={};let ok=true;
+  for(const p of lead.slice(0,8)){
+   let t=textT(p);if(t.trim().length>110)break;
+   if(isBand(p)&&o.bands)break;
+   const got={};let left=t;
+   const sm=left.match(SUBJ);if(sm){got.t2=(sm[1]+" "+sm[2]).toUpperCase();left=left.replace(SUBJ,"")}
+   for(const[re,k]of pats){const m=left.match(re);if(m){if(k)got[k]=m[m.length-1].trim();left=left.replace(re,"")}}
+   if(left.replace(/[\s_.…\/:\-–|]/g,"").length)break;       /* something we do not understand: stop */
+   if(!Object.keys(got).length&&!/(name|date|magaca|taariikh|class|grade)/i.test(t))break;
+   Object.assign(vals,got);take.push(p)}
+  const hasLabel=take.some(p=>/(name|date|magaca|taariikh|class|grade|fasal)/i.test(text(p)));
+  const rest=lead.filter(p=>!take.includes(p)).slice(0,1)[0];
+  if(take.length&&hasLabel&&(vals.ic||vals.im||vals.itime||vals.t2)){
+   take.forEach(p=>p.remove());
+   if(vals.ic&&!o.ic)o.ic=vals.ic;if(vals.im&&!o.im)o.im=vals.im;if(vals.itime){o.itime=vals.itime;o.i4=true}
+   if(vals.t2&&!o.t2)o.t2=vals.t2;
+   log.push(["Student box","your Name, Grade and Marks lines were moved into the school box"])
+  }else{o.ib=false;log.push(["Student box","skipped, your document already has Name and Date lines"])}
+ }
  let mediaDone=false;
  const putLogo=async()=>{
   if(mediaDone||!logo)return;mediaDone=true;

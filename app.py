@@ -7,12 +7,15 @@ import hmac
 import io
 import json
 import os
+import shutil
+import subprocess
+import tempfile
 import threading
 import time
 import uuid
 
 import requests
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 
 import ai
 from prompts import COMMANDS, TAGS, system_for
@@ -147,7 +150,7 @@ def healthz():
 def status():
     return jsonify(locked=bool(password()), authed=authed(),
                    commands={k: {"label": v["label"], "desc": v["desc"], "kind": v["kind"]} for k, v in COMMANDS.items()},
-                   tags=TAGS, models=ai.describe() if authed() else {}, fake=ai.FAKE)
+                   tags=TAGS, models=ai.describe() if authed() else {}, fake=ai.FAKE, pdf=soffice_ok())
 
 
 @app.post("/api/run")
@@ -232,6 +235,93 @@ def images():
     if not items:
         return jsonify(error="No pictures found. Try another word."), 404
     return jsonify(items=items[:16])
+
+
+# ------------------------------------------------------------ Word -> PDF (LibreOffice)
+CONV = threading.Lock()
+PDFS = {}
+
+
+def soffice_ok():
+    return bool(shutil.which("soffice") or shutil.which("libreoffice"))
+
+
+def convert_job(jid, data):
+    try:
+        step(jid, "Making the PDF...")
+        d = tempfile.mkdtemp(prefix="qpdf")
+        src = os.path.join(d, "doc.docx")
+        with open(src, "wb") as f:
+            f.write(data)
+        exe = shutil.which("soffice") or shutil.which("libreoffice")
+        with CONV:
+            subprocess.run([exe, "--headless", "--norestore", "-env:UserInstallation=file:///tmp/lo_profile",
+                            "--convert-to", "pdf", "--outdir", d, src], timeout=150, capture_output=True)
+        pdf = os.path.join(d, "doc.pdf")
+        if not os.path.exists(pdf):
+            raise RuntimeError("The PDF could not be made from this file.")
+        pages = 1
+        try:
+            out = subprocess.run(["pdfinfo", pdf], capture_output=True, text=True, timeout=30).stdout
+            pages = int(next(l for l in out.splitlines() if l.startswith("Pages:")).split()[1])
+        except Exception:
+            pass
+        pid = uuid.uuid4().hex[:12]
+        with LOCK:
+            for k in [k for k, v in PDFS.items() if time.time() - v["t"] > 7200]:
+                shutil.rmtree(PDFS.pop(k)["dir"], ignore_errors=True)
+            PDFS[pid] = {"t": time.time(), "dir": d, "pdf": pdf, "pages": pages}
+            JOBS[jid].update(state="done", result={"id": pid, "pages": pages})
+    except Exception as e:      # noqa: BLE001
+        with LOCK:
+            JOBS[jid].update(state="error", error=str(e)[:160])
+
+
+@app.post("/api/pdf")
+def pdf_start():
+    g = guard()
+    if g:
+        return g
+    if not soffice_ok():
+        return jsonify(error="PDF maker is not installed on this server."), 501
+    if limited():
+        return jsonify(error="Too many requests. Wait a little and try again."), 429
+    f = request.files.get("file")
+    if not f:
+        return jsonify(error="No file."), 400
+    jid = new_job()
+    threading.Thread(target=convert_job, args=(jid, f.read()), daemon=True).start()
+    return jsonify(job=jid)
+
+
+@app.get("/api/pdf/<pid>")
+def pdf_get(pid):
+    g = guard()
+    if g:
+        return g
+    p = PDFS.get(pid)
+    if not p:
+        return jsonify(error="This PDF is gone. Make it again."), 404
+    with open(p["pdf"], "rb") as f:
+        return Response(f.read(), mimetype="application/pdf")
+
+
+@app.get("/api/pdf/<pid>/page/<int:n>")
+def pdf_page(pid, n):
+    g = guard()
+    if g:
+        return g
+    p = PDFS.get(pid)
+    if not p or n < 1 or n > p["pages"]:
+        return jsonify(error="No such page."), 404
+    base = os.path.join(p["dir"], f"pg{n}")
+    if not os.path.exists(base + ".png"):
+        subprocess.run(["pdftoppm", "-r", "110", "-png", "-singlefile", "-f", str(n), "-l", str(n), p["pdf"], base],
+                       capture_output=True, timeout=60)
+    if not os.path.exists(base + ".png"):
+        return jsonify(error="Could not draw the page."), 500
+    with open(base + ".png", "rb") as f:
+        return Response(f.read(), mimetype="image/png")
 
 
 if __name__ == "__main__":
