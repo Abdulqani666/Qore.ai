@@ -4,6 +4,10 @@ import json
 
 def fake_reply(system, messages):
     last = messages[-1]["text"].lower() if messages else ""
+    if "You check a formatted school exam" in system:
+        return json.dumps({"summary": "Fixed one title.", "hints": [{"text": "READING COMPREHENSION", "action": "band", "why": "heading"}], "options": {}})
+    if "talking to a document formatter" in system:
+        return json.dumps({"reply": "Done. I made the title bigger.", "hints": [], "options": {"hs": 16}})
     if "ONLY a JSON array" in system:
         return json.dumps([{"find": "teh", "replace": "the", "why": "spelling"}])
     if "ONLY a JSON object" in system:

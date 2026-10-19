@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f6f5f2">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Qore</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
@@ -18,7 +23,7 @@ button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .app{height:100dvh;display:flex;flex-direction:column;max-width:760px;margin:0 auto}
 header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px}
-.logo{width:30px;height:30px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:700 16px/1 Georgia,serif}
+.logo{flex:none;width:30px;height:30px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:700 16px/1 Georgia,serif}
 header h1{margin:0;font:600 17px/1 Georgia,"Times New Roman",serif;letter-spacing:.2px;flex:1}
 .ghost{border:1px solid var(--line);background:transparent;border-radius:999px;padding:7px 13px;display:inline-flex;gap:7px;align-items:center;font-size:14px}
 .ghost:hover{background:var(--soft)}
@@ -98,6 +103,61 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke
 .gi .btn{padding:4px 10px;font-size:12.5px}
 .pw{display:flex;gap:8px;margin-top:8px}
 .pw input{flex:1}
+/* professional chat look */
+:root{--radius:20px;--shadow:0 1px 2px rgba(20,20,18,.06),0 8px 24px rgba(20,20,18,.06)}
+body{font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:-.005em}
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid transparent}
+header h1{font:600 18px/1 "Inter",system-ui,sans-serif;letter-spacing:-.02em;flex:0}
+header .sp,.crow .sp{flex:1}
+.ghost.ic{padding:7px 11px;font-size:13.5px;color:var(--mute)}
+.ghost.ic:hover{color:var(--ink)}
+#fcount{background:var(--accent);color:var(--accent-ink);border-radius:999px;font-size:11px;font-weight:700;padding:1px 6px;display:none}
+#fcount.on{display:inline}
+.hero{margin:7vh auto 0;max-width:560px;text-align:center;animation:in .4s ease both}
+.hero .hl{width:46px;height:46px;border-radius:14px;margin:0 auto 18px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:700 24px/1 Georgia,serif}
+.hero h2{margin:0 0 8px;font:650 clamp(24px,6vw,32px)/1.15 "Inter",system-ui,sans-serif;letter-spacing:-.03em}
+.hero p{margin:0 auto 22px;color:var(--mute);max-width:430px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:13px 14px;cursor:pointer;text-align:left;transition:border-color .15s,transform .15s,box-shadow .15s}
+.card:hover{border-color:var(--ink);transform:translateY(-1px);box-shadow:var(--shadow)}
+.card b{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.card span{display:block;font-size:12.5px;color:var(--mute);margin-top:3px;line-height:1.35}
+@media (max-width:480px){.ghost.ic .lbl{display:none}.ghost.ic{padding:8px 10px}.card{padding:11px 12px}.card span{display:none}.hero{margin-top:5vh}}
+details.dt{margin-top:8px;font-size:14px;color:var(--mute)}details.dt summary{cursor:pointer;padding:4px 0}
+#thread{padding:6px 16px 24px}
+.m{margin:22px 0}
+.m.a .bd{font-size:16px;line-height:1.6}
+.m.u .bd{border-radius:20px 20px 6px 20px;padding:10px 15px}
+.av{width:28px;height:28px;border-radius:50%}
+.btn{border-radius:12px;padding:9px 15px;font-weight:500;transition:background .15s,border-color .15s}
+.btn.pri{font-weight:600}
+.fc{border-radius:16px;box-shadow:0 1px 2px rgba(20,20,18,.04)}
+.steps li{padding-left:24px}
+.dock{padding:4px 14px calc(12px + env(safe-area-inset-bottom,0px));position:relative}
+.comp{display:block;border-radius:var(--radius);padding:10px 10px 8px 14px;box-shadow:var(--shadow);transition:border-color .15s}
+.comp:focus-within,.comp.on{border-color:var(--ink)}
+.comp textarea{display:block;width:100%;padding:4px 2px 8px;font-size:16px}
+.crow{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.plus{width:34px;height:34px;background:transparent;border:1px solid var(--line)}
+.plus:hover{background:var(--soft)}
+.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 11px;font-size:13px;color:var(--mute);white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.pill:hover{background:var(--soft);color:var(--ink)}
+.pill[aria-pressed=true]{background:var(--soft);color:var(--ink);border-color:var(--ink)}
+.pill svg{width:14px;height:14px}
+.send{width:36px;height:36px}
+.send:disabled{opacity:.35}
+.menu{position:absolute;left:14px;bottom:calc(100% - 4px);z-index:8;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-width:210px;overflow:hidden}
+.menu[hidden]{display:none}
+.menu button{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;border:0;background:none;padding:10px 14px;font-size:14px}
+.menu button:hover,.menu button[aria-checked=true]{background:var(--soft)}
+.menu small{color:var(--mute);font-size:12px}
+.menu button:disabled{opacity:.45}
+.fine{font-size:11.5px;margin:7px 0 0}
+.fl-i{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.fl-i:last-child{border-bottom:0}
+.fl-i b{flex:1;font-size:14px;font-weight:500;overflow-wrap:anywhere;min-width:0}
+.fl-i .btn{padding:6px 11px;font-size:13px}
+.fl-h{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 4px}
 /* preview */
 #pv{position:fixed;inset:0;z-index:30;background:var(--bg);display:none;flex-direction:column}
 #pv.on{display:flex}
@@ -109,8 +169,8 @@ svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke
 /* design sheet */
 #veil{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
 #veil.on{opacity:1;pointer-events:auto}
-#sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:20px 20px 0 0;max-height:88dvh;display:flex;flex-direction:column;transform:translateY(105%);transition:transform .25s ease;max-width:760px;margin:0 auto}
-#sheet.on{transform:none}
+#sheet,#fl{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:20px 20px 0 0;max-height:88dvh;display:flex;flex-direction:column;transform:translateY(105%);transition:transform .25s ease;max-width:760px;margin:0 auto}
+#sheet.on,#fl.on{transform:none}
 .sh-h{display:flex;align-items:center;padding:14px 18px 8px}
 .sh-h h2{margin:0;font:600 18px/1 Georgia,serif;flex:1}
 .sh-b{overflow-y:auto;padding:4px 18px 18px;-webkit-overflow-scrolling:touch}
@@ -139,23 +199,27 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
 <div class="app">
  <header>
   <div class="logo">Q</div>
-  <h1>Qore</h1>
-  <button class="ghost" id="open" aria-haspopup="dialog"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Design</button>
+  <h1>Qore</h1><span class="sp"></span>
+  <button class="ghost ic" id="inst" hidden><svg viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="lbl">Install</span></button>
+  <button class="ghost ic" id="files" aria-haspopup="dialog" aria-label="My files"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></svg><span class="lbl">Files</span><span id="fcount"></span></button>
+  <button class="ghost ic" id="open" aria-haspopup="dialog"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span class="lbl">Design</span></button>
  </header>
  <main id="thread" aria-live="polite"></main>
  <div class="dock">
-  <div class="chips" id="chips" role="group" aria-label="Design">
-   <button class="chip" data-p="exam" aria-pressed="true">School exam</button>
-   <button class="chip" data-p="plain" aria-pressed="false">Plain document</button>
-   <button class="chip" id="mine" aria-pressed="false">My saved design</button>
-  </div>
   <div class="pal" id="pal" hidden></div>
   <div class="tray" id="tray"></div>
   <div class="comp" id="comp">
-   <button class="plus" id="plus" aria-label="Attach files"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-   <textarea id="ta" rows="1" placeholder="Type / for tasks, # to pick a model" aria-label="Message"></textarea>
-   <button class="send" id="send" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 19V6M6 11l6-6 6 6"/></svg></button>
+   <textarea id="ta" rows="1" placeholder="Ask Qore, or type / for tasks" aria-label="Message"></textarea>
+   <div class="crow">
+    <button class="plus" id="plus" aria-label="Attach files"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="pill" id="mdl" aria-haspopup="menu"><span id="mdlt">Auto</span><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+    <button class="pill" id="thk" aria-pressed="false" title="Use the biggest model and think longer">Think</button>
+    <button class="pill" id="dsn" title="Change the design"><span id="dsnt">School exam</span></button>
+    <span class="sp"></span>
+    <button class="send" id="send" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 19V6M6 11l6-6 6 6"/></svg></button>
+   </div>
   </div>
+  <div class="menu" id="mmenu" role="menu" hidden></div>
   <input type="file" id="pick" accept=".docx,.pdf,.txt,.md,image/*" multiple hidden>
   <p class="fine" id="fine"></p>
  </div>
@@ -165,6 +229,11 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
 <div id="sheet" role="dialog" aria-modal="true" aria-label="Design settings" aria-hidden="true">
  <div class="sh-h"><h2>Design</h2><button class="ghost" id="close">Done</button></div>
  <div class="sh-b">
+  <div class="sec"><h3>Start from</h3><div class="chips" id="chips" role="group" aria-label="Design">
+   <button class="chip" data-p="exam" aria-pressed="true">School exam</button>
+   <button class="chip" data-p="plain" aria-pressed="false">Plain document</button>
+   <button class="chip" id="mine" aria-pressed="false">My saved design</button>
+  </div></div>
   <div class="sec"><h3>Text</h3>
    <div class="row">
     <div class="f"><label for="font">Font</label><select id="font"><option>Verdana</option><option>Arial</option><option>Times New Roman</option><option>Calibri</option><option>Georgia</option><option>Tahoma</option></select></div>
@@ -224,6 +293,10 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
  </div>
  <div class="sh-f"><button class="btn" id="save">Save as my design</button><button class="btn pri" id="apply">Done</button></div>
 </div>
+<div id="fl" role="dialog" aria-modal="true" aria-label="My files" aria-hidden="true">
+ <div class="sh-h"><h2>My files</h2><button class="ghost" id="flx">Done</button></div>
+ <div class="sh-b"><div class="fl-h"><button class="btn" id="zw">All Word files (.zip)</button><button class="btn" id="zp">All PDF files (.zip)</button></div><div id="fllist"></div><p class="note" id="flnote"></p></div>
+</div>
 <div id="pv" role="dialog" aria-modal="true" aria-label="Preview" aria-hidden="true">
  <div class="bar"><b id="pvName"></b><button class="btn pri" id="pvW">Download Word</button><button class="btn" id="pvP">Download PDF</button><button class="btn" id="pvX">Close</button></div>
  <div id="pvBody"></div>
@@ -247,12 +320,22 @@ put(PRE.exam);
 /* ---------- chat ---------- */
 const th=$("thread");
 const down=()=>{th.scrollTop=th.scrollHeight};
-function say(html,who){const d=document.createElement("div");d.className="m "+(who==="u"?"u":"a");d.innerHTML=(who==="u"?"":'<div class="av">Q</div>')+'<div class="bd">'+html+"</div>";th.appendChild(d);down();return d.querySelector(".bd")}
+function say(html,who){const hr=th.querySelector(".hero");if(hr)hr.remove();const d=document.createElement("div");d.className="m "+(who==="u"?"u":"a");d.innerHTML=(who==="u"?"":'<div class="av">Q</div>')+'<div class="bd">'+html+"</div>";th.appendChild(d);down();return d.querySelector(".bd")}
 const typing=()=>say('<span class="dots" aria-label="Working"><i></i><i></i><i></i></span>');
 const size=n=>n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
 const fcard=(name,sub,ext)=>`<div class="fc"><div class="badge">${ext}</div><div class="t"><b>${esc(name)}</b><span>${esc(sub)}</span></div></div>`;
-say("<p>Hello. I am Qore. Type <b>/</b> to pick a task and <b>#</b> to pick which AI does it (Claude, ChatGPT or Gemini).</p><p>Attach a Word file and send it with no words to put it in your school design. I never change your words.</p><div class='quick'><button class='btn' data-q='/build_document '>/build_document</button><button class='btn' data-q='/formatter '>/formatter</button><button class='btn' data-q='/exam '>/exam</button><button class='btn' data-q='/images '>/images</button><button class='btn' data-q='/help'>/help</button></div>");
-document.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{ta.value=b.dataset.q;ta.focus();grow();palUpdate()});
+(function hero(){
+ const h=document.createElement("div");h.className="hero";
+ h.innerHTML=`<div class="hl">Q</div><h2>What should we make today?</h2><p>Write documents, exams and lessons with AI, or put your own Word file in the school design.</p><div class="cards">
+ <button class="card" data-q="/build_document "><b>Build a document</b><span>Researches, thinks and writes from sources</span></button>
+ <button class="card" data-q="/exam "><b>Make an exam</b><span>Parts, marks and writing lines</span></button>
+ <button class="card" data-f="1"><b>Format my Word file</b><span>Your design. Claude checks the result</span></button>
+ <button class="card" data-q="/lesson "><b>Lesson notes</b><span>Step by step with real examples</span></button>
+ <button class="card" data-q="/answer_key "><b>Marking scheme</b><span>Attach an exam, get the answers</span></button>
+ <button class="card" data-q="/images "><b>Find pictures</b><span>Free images with credit</span></button></div>`;
+ th.appendChild(h);
+ h.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{ta.value=b.dataset.q;ta.focus();grow();palUpdate()});
+ h.querySelector("[data-f]").onclick=()=>pick.click()})();
 
 /* ---------- design choice ---------- */
 let mineStore=null;
@@ -370,7 +453,7 @@ const ALIAS={build:"build_document",doc:"build_document",document:"build_documen
 const TALIAS={chatgpt:"gpt",openai:"gpt",google:"gemini",think:"deep",slow:"deep",quick:"fast",web:"search"};
 const TAGKEYS=["claude","gpt","gemini","deep","fast","search","nosearch","noai"];
 const TAGHELP={claude:"Use Claude",gpt:"Use ChatGPT",gemini:"Use Gemini",deep:"Biggest model, more thinking",fast:"Smallest, quickest model",search:"Search the web first",nosearch:"Do not search the web",noai:"Format without any AI"};
-const ORDER=["build_document","formatter","exam","answer_key","lesson","worksheet","translate","summarize","proofread","revise","ask","images","models"];
+const ORDER=["build_document","formatter","fix","exam","answer_key","lesson","worksheet","translate","summarize","proofread","revise","ask","images","models"];
 const CMDS=()=>{const c=(SRV&&SRV.commands)||{formatter:{label:"Formatter",desc:"Put a Word file in your design."}};return ORDER.filter(k=>c[k]).map(k=>[k,c[k]])};
 function parse(s){
  let cmd=null;const tags=[];
@@ -412,6 +495,65 @@ pick.onchange=e=>{addFiles(e.target.files);pick.value=""};
 ["dragleave","drop"].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();$("comp").classList.remove("on")}));
 document.addEventListener("drop",e=>addFiles(e.dataTransfer.files));
 $("send").onclick=()=>send();
+
+/* ---------- model, think, files, install ---------- */
+let MODEL="auto",THINK=false;
+const MLAB={auto:"Auto",claude:"Claude",gpt:"ChatGPT",gemini:"Gemini"};
+function menuBuild(){
+ const m=$("mmenu");m.innerHTML="";
+ Object.keys(MLAB).forEach(k=>{
+  const on=k==="auto"||(SRV&&SRV.models&&SRV.models[k]&&SRV.models[k].on);
+  const b=document.createElement("button");b.type="button";b.setAttribute("role","menuitemradio");b.setAttribute("aria-checked",String(MODEL===k));b.disabled=!on;
+  b.innerHTML=`<span>${MLAB[k]}</span><small>${k==="auto"?"Best model for each task":on?"Ready":"No key set"}</small>`;
+  b.onclick=()=>{MODEL=k;$("mdlt").textContent=MLAB[k];m.hidden=true};m.appendChild(b)})}
+$("mdl").onclick=e=>{e.stopPropagation();const m=$("mmenu");if(m.hidden){menuBuild();m.hidden=false}else m.hidden=true};
+document.addEventListener("click",e=>{if(!e.target.closest("#mmenu"))$("mmenu").hidden=true});
+$("thk").onclick=()=>{THINK=!THINK;$("thk").setAttribute("aria-pressed",String(THINK))};
+$("dsn").onclick=()=>open_();
+const DNAME={exam:"School exam",plain:"Plain document",mine:"My design","":"Custom design"};
+const mark0=mark;mark=function(id){mark0(id);$("dsnt").textContent=DNAME[id]||"Custom design"};
+/* files made in this visit */
+const MADE=[];
+function registerDownload(name,data){
+ const i=MADE.findIndex(x=>x.name===name);if(i>=0)MADE.splice(i,1);
+ MADE.push({name,data});const c=$("fcount");c.textContent=MADE.length;c.classList.add("on")}
+function flRender(){
+ const L=$("fllist");L.innerHTML="";
+ if(!MADE.length){L.innerHTML='<p class="note">Nothing yet. Files you make will be listed here so you can download them again.</p>';return}
+ MADE.slice().reverse().forEach(f=>{
+  const d=document.createElement("div");d.className="fl-i";
+  d.innerHTML=`<div class="badge">DOCX</div><b>${esc(f.name)}</b><button class="btn" data-a="w">Word</button><button class="btn" data-a="p">PDF</button>`;
+  d.querySelector("[data-a=w]").onclick=()=>saveBytes(f.name,f.data,WORDMIME);
+  d.querySelector("[data-a=p]").onclick=e=>downloadPdf(f.name,f.data,e.currentTarget);
+  L.appendChild(d)})}
+function flOpen(){flRender();$("flnote").textContent="";$("veil").classList.add("on");$("fl").classList.add("on");$("fl").setAttribute("aria-hidden","false")}
+function flClose(){$("fl").classList.remove("on");$("fl").setAttribute("aria-hidden","true");if(!$("sheet").classList.contains("on"))$("veil").classList.remove("on")}
+$("files").onclick=flOpen;$("flx").onclick=flClose;
+$("veil").addEventListener("click",flClose);
+async function zipAll(kind,btn){
+ if(!MADE.length){$("flnote").textContent="No files yet.";return}
+ btn.disabled=true;const z=new JSZip();let n=0;
+ try{
+  for(const f of MADE){
+   if(kind==="w"){z.file(f.name,f.data);n++}
+   else{$("flnote").textContent=`Making PDF ${n+1} of ${MADE.length}...`;const r=await getPdf(f.data);if(r){z.file(f.name.replace(/\.docx$/i,".pdf"),await fetchBlob("/api/pdf/"+r.id));n++}}}
+  if(!n){$("flnote").textContent="The PDF maker is not available here.";return}
+  const blob=await z.generateAsync({type:"blob"});saveBytes("qore_"+(kind==="w"?"word":"pdf")+"_files.zip",blob,"application/zip");$("flnote").textContent=n+" file"+(n>1?"s":"")+" saved."
+ }catch(e){$("flnote").textContent="Could not make the zip: "+e.message}
+ btn.disabled=false}
+$("zw").onclick=e=>zipAll("w",e.currentTarget);$("zp").onclick=e=>zipAll("p",e.currentTarget);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("fl").classList.contains("on"))flClose()});
+/* install as an app */
+let deferred=null;
+const standalone=window.matchMedia&&matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;$("inst").hidden=false});
+window.addEventListener("appinstalled",()=>{$("inst").hidden=true;deferred=null});
+if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!standalone)$("inst").hidden=false;
+$("inst").onclick=async()=>{
+ if(deferred){deferred.prompt();try{await deferred.userChoice}catch(e){}deferred=null;$("inst").hidden=true}
+ else say("<p>To install Qore on your iPhone: tap the <b>Share</b> button in Safari, then <b>Add to Home Screen</b>.</p>")};
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("/sw.js").catch(()=>{});
+
 
 /* password */
 function askPass(){return new Promise(ok=>{
@@ -494,7 +636,7 @@ async function docResult(r,t){
  const{bytes,meta}=await mdToDocx(r.text);
  const{data}=await buildFrom(bytes,designFor(r.cmd,meta));
  const name=slug(meta.title||r.cmd)+".docx";
- lastDoc={md:r.text,meta,cmd:r.cmd};
+ lastDoc={md:r.text,meta,cmd:r.cmd};lastKind="doc";registerDownload(name,data);
  t.innerHTML=`<p>Your document is ready.</p>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="view">Preview</button><button class="btn" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Download PDF</button><button class="btn" data-a="chg">Change it</button>${r.cmd==="exam"?'<button class="btn" data-a="key">Make marking scheme</button>':""}<button class="btn" data-a="txt">Show text</button></div>`+foot(r);
  const q=a=>t.querySelector(`[data-a=${a}]`);
  q("view").onclick=()=>openPreview(name,data);
@@ -586,16 +728,20 @@ function help(){
 async function send(){
  if(busy)return;
  const raw=ta.value;let{cmd,tags,text}=parse(raw);
+ if(MODEL!=="auto"&&!tags.some(x=>["claude","gpt","gemini"].includes(x)))tags.push(MODEL);
+ if(THINK&&!tags.includes("deep"))tags.push("deep");
  const files=pending.slice();
  if(!cmd){
   if(!text&&!files.length)return;
   if(!text&&files.every(f=>/\.docx$/i.test(f.name)))cmd="formatter";
+  else if(lastKind==="fmt"&&lastFmt&&text&&!files.length)cmd="fix";
   else if(lastDoc&&/^(make|add|change|remove|shorten|lengthen|replace|fix|rewrite|more|less|use|put)\b/i.test(text)&&!files.length)cmd="revise";
   else cmd="ask"}
  if(cmd==="help"){ta.value="";grow();pal.hidden=true;help();return}
  if(!CMDS().some(([k])=>k===cmd)){say(`<p class="err">I do not know /${esc(cmd)}.</p>`);help();return}
  ta.value="";pending=[];tray();grow();pal.hidden=true;
  say((raw.trim()?`<p>${esc(raw.trim())}</p>`:"")+files.map(f=>fcard(f.name,size(f.size),(f.name.split(".").pop()||"file").slice(0,4).toUpperCase())).join(""),"u");
+ if(cmd==="fix"){if(!lastFmt){say("<p>Format a Word file first, then tell me what to correct.</p>");return}return tellFormatter(text,tags)}
  if(cmd==="models")return showModels();
  if(cmd==="images")return showImages(text);
  if(cmd==="formatter"){
@@ -609,22 +755,102 @@ async function send(){
  if(!text&&!files.length){say("<p>Tell me what you need, for example <b>/exam Grade 6 English, 20 marks, unit on animals</b>.</p>");return}
  await runAI(cmd,text,tags,files,{src})}
 
+let lastFmt=null,lastKind="";
+const OPT_NUM={size:[8,20],hs:[8,30],mt:[5,40],ml:[5,40]};
+const OPT_BOOL=["bands","tbl","border","ib","gi","wm","lg","tb","bw","tight","rm","i4","fline","force"];
+const OPT_ENUM={font:["Verdana","Arial","Times New Roman","Calibri","Georgia"],caps:["none","headings","all"],num:["none","headings","paras","auto"],pn:["none","n","x","xofy"],pos:["left","center","right"]};
+const OPT_TXT=["ft","t1","t2","t3","ic","im","it","gitext"];
+function cleanOpts(x){
+ const r={};if(!x||typeof x!=="object"||Array.isArray(x))return r;
+ for(const k in OPT_NUM){if(k in x){const v=parseFloat(x[k]);if(v>=OPT_NUM[k][0]&&v<=OPT_NUM[k][1])r[k]=v}}
+ OPT_BOOL.forEach(k=>{if(k in x&&typeof x[k]==="boolean")r[k]=x[k]});
+ for(const k in OPT_ENUM){if(OPT_ENUM[k].includes(x[k]))r[k]=x[k]}
+ OPT_TXT.forEach(k=>{if(typeof x[k]==="string"&&x[k].length<=300)r[k]=x[k]});
+ return r}
+function cleanHints(x){
+ if(!Array.isArray(x))return[];
+ return x.filter(h=>h&&typeof h.text==="string"&&h.text.trim().length>=3&&["band","unband","title","untitle","number","unnumber"].includes(h.action)).slice(0,30).map(h=>({text:h.text.slice(0,60),action:h.action,why:String(h.why||"").slice(0,80)}))}
+async function outlineOf(bytes,hs){
+ const z=await JSZip.loadAsync(bytes),d=new DOMParser().parseFromString(await z.file("word/document.xml").async("string"),"application/xml");
+ const start={};
+ try{const nf=z.file("word/numbering.xml");if(nf){const nx=new DOMParser().parseFromString(await nf.async("string"),"application/xml"),ab={};
+  qa(nx,"abstractNum").forEach(a=>{const l=qa(a,"lvl")[0],st=l&&qa(l,"start")[0];ab[attr(a,"abstractNumId")]=st?+attr(st,"val"):1});
+  qa(nx,"num").forEach(n=>{const ai=qa(n,"abstractNumId")[0],so=qa(n,"startOverride")[0];start[attr(n,"numId")]=so?+attr(so,"val"):(ai?ab[attr(ai,"val")]:1)||1})}}catch(e){}
+ const ctr={},out=[];let i=0;
+ qa(d,"p").forEach(p=>{
+  const t=qa(p,"t").map(x=>x.textContent).join("").trim();if(!t)return;i++;
+  let k="TXT";const shd=qa(p,"shd")[0];
+  if(inTable(p))k="TBL";
+  else if(shd&&/^0+$/.test(attr(shd,"fill")||""))k="BAR";
+  else{
+   const np=qa(p,"numPr")[0],nid=np&&qa(np,"numId")[0]&&attr(qa(np,"numId")[0],"val");
+   const rs=qa(p,"r").filter(r=>qa(r,"t").some(x=>x.textContent.trim()));
+   if(nid){ctr[nid]=(ctr[nid]==null?(start[nid]||1)-1:ctr[nid])+1;k="N"+ctr[nid]}
+   else if(rs.length&&rs.every(r=>{const sz=qa(r,"sz")[0];return sz&&+attr(sz,"val")===Math.round(hs*2)&&isBold(r)}))k="TITLE"}
+  out.push(`[${i}] ${k} | ${t.slice(0,90)}`)});
+ return out.length>230?out.slice(0,160).concat(["... (middle cut) ..."],out.slice(-60)).join("\n"):out.join("\n")}
+function aiReady(){return !!SRV&&anyModel()&&!(SRV.locked&&!SRV.authed)}
+async function askFormatter(cmd,text,tags){
+ const fd=new FormData();fd.append("cmd",cmd);fd.append("text",text);
+ fd.append("tags",tags.filter(x=>["claude","gpt","gemini","fast","deep"].includes(x)).join(","));
+ return await runJob(fd,null,120000)}
+const NAMES={band:"made a black bar",unband:"removed a black bar",title:"made a title",untitle:"made normal text",number:"added a number",unnumber:"removed a number"};
+function describeChanges(hints,opts){
+ const L=hints.map(h=>`${NAMES[h.action]}: "${h.text.slice(0,40)}"${h.why?" ("+h.why+")":""}`);
+ Object.keys(opts).forEach(k=>L.push(`setting ${k} = ${opts[k]}`));return L}
+function showFormatted(t,res,name,notes,reply){
+ const{data,log}=res;
+ t.innerHTML=(reply?`<p>${esc(reply)}</p>`:"<p>Done. Your document is in the new design.</p>")+
+  `<ul class="steps">${notes.map(l=>`<li>${esc(l)}</li>`).join("")}</ul><details class="dt"><summary>What I did (${log.length} steps)</summary><ul class="steps">${log.map(l=>`<li>${esc(l[0]+": "+l[1])}</li>`).join("")}</ul></details>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="view">Preview</button><button class="btn" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Download PDF</button><button class="btn" data-a="tell">Tell the formatter</button></div>`;
+ const q=a=>t.querySelector(`[data-a=${a}]`);
+ q("view").onclick=()=>openPreview(name,data);
+ q("docx").onclick=()=>saveBytes(name,data,WORDMIME);
+ q("pdf").onclick=e=>downloadPdf(name,data,e.currentTarget);
+ q("tell").onclick=()=>{ta.value="";ta.placeholder="Tell the formatter what is wrong, for example: make the title bigger";ta.focus()};
+ registerDownload(name,data);down()}
 async function format(tags=[]){
  if(busy||!buf)return;busy=true;
- const t=typing();
+ const t=typing();working(t,["Formatting your document..."]);
  try{
-  await new Promise(r=>setTimeout(r,400));
-  const o=get(),note=await aiAssist(o,tags);const{data,log}=await build(o);if(note)log.unshift(note);
-  const name=file.name.replace(/\.docx$/i,"")+"_formatted.docx";
-  t.innerHTML=`<p>Done. Your document is in the new design.</p><ul class="steps">${log.map(l=>`<li><b>${esc(l[0])}</b>: ${esc(l[1])}</li>`).join("")}</ul>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="view">Preview</button><button class="btn" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Download PDF</button><button class="btn" data-a="again">Format again</button></div>`;
-  t.querySelector('[data-a=view]').onclick=()=>openPreview(name,data);
-  t.querySelector('[data-a=docx]').onclick=()=>saveBytes(name,data,"application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-  t.querySelector('[data-a=pdf]').onclick=e=>downloadPdf(name,data,e.currentTarget);
-  t.querySelector('[data-a=again]').onclick=()=>format(tags);
-  down();
+  const o=get(),notes=[];
+  const note=await aiAssist(o,tags);if(note)notes.push(note[0]+": "+note[1]);
+  let hints=[];
+  let res=await build({...o,hints});
+  if(aiReady()&&!tags.includes("noai")&&!tags.includes("nocheck")){
+   working(t,["Checking titles, numbering and design with AI..."]);
+   try{
+    const outline=await outlineOf(res.data,res.o?res.o.hs:(+o.hs||14));
+    const r=await askFormatter("audit","SETTINGS: "+JSON.stringify({font:o.font,size:o.size,hs:o.hs})+"\n\nOUTLINE:\n"+outline,tags);
+    const d=r&&r.data&&typeof r.data==="object"&&!Array.isArray(r.data)?r.data:null;
+    if(d){
+     const hs=cleanHints(d.hints),op=cleanOpts(d.options);
+     if(hs.length||Object.keys(op).length){hints=hs;Object.assign(o,op);res=await build({...o,hints});
+      notes.push(`AI check (${r.provider}): ${d.summary||"fixed a few things"}`);describeChanges(hs,op).forEach(x=>notes.push("  "+x))}
+     else notes.push(`AI check (${r.provider}): no mistakes found in titles, numbering or design`)}
+   }catch(e){notes.push("AI check skipped: "+e.message)}
+  }
+  lastFmt={buf,name:file.name,o,hints};lastKind="fmt";
+  showFormatted(t,res,file.name.replace(/\.docx$/i,"")+"_formatted.docx",notes,null);
  }catch(e){t.innerHTML=`<p class="err">I could not format this file: ${esc(e.message)}</p><div class="acts"><button class="btn" data-a="retry">Try again</button></div>`;t.querySelector("[data-a=retry]").onclick=()=>format(tags)}
  finally{busy=false}
 }
+async function tellFormatter(instr,tags){
+ if(busy||!lastFmt)return;
+ if(!await ensureAI())return;
+ busy=true;const t=typing();working(t,["Reading your message..."]);
+ try{
+  const cur=await build({...lastFmt.o,hints:lastFmt.hints});
+  const outline=await outlineOf(cur.data,+lastFmt.o.hs||14);
+  const r=await askFormatter("fix","SETTINGS: "+JSON.stringify(Object.fromEntries(["font","size","hs","caps","num","bands","tbl","border","ib","gi","wm","lg","tb","bw","tight","pn","pos","ft","t1","t2","t3","ic","im","it","mt","ml"].map(k=>[k,lastFmt.o[k]])))+"\n\nOUTLINE:\n"+outline+"\n\nTEACHER SAYS:\n"+instr,tags);
+  const d=r&&r.data&&typeof r.data==="object"&&!Array.isArray(r.data)?r.data:null;
+  if(!d){t.innerHTML=lite(r.text||"I could not understand that. Please say it another way.");return}
+  const hs=cleanHints(d.hints),op=cleanOpts(d.options);
+  if(!hs.length&&!Object.keys(op).length){t.innerHTML=`<p>${esc(d.reply||"I did not change anything.")}</p>`+foot(r);return}
+  lastFmt.hints=lastFmt.hints.concat(hs);Object.assign(lastFmt.o,op);
+  const res=await build({...lastFmt.o,hints:lastFmt.hints});
+  showFormatted(t,res,lastFmt.name.replace(/\.docx$/i,"")+"_formatted.docx",describeChanges(hs,op),d.reply||"Done. I made the changes.");
+ }catch(e){t.innerHTML=`<p class="err">${esc(e.message)}</p>`}
+ finally{busy=false;down()}}
 
 /* ---------- formatting engine ---------- */
 const qa=(n,t)=>Array.from(n.getElementsByTagNameNS(W,t));
@@ -708,6 +934,9 @@ async function build(o){
  if(doc.getElementsByTagName("parsererror").length)throw new Error("The document text could not be read.");
  const half=String(Math.round(o.size*2));
  const tw0x=()=>{const sz=qa(doc,"pgSz")[0],w=sz?+attr(sz,"w")||11906:11906;return w-2*Math.round((parseFloat(o.ml)||18)*56.7)};
+ const HX=(o.hints||[]).map(h=>({k:String(h.text||"").replace(/^\s*\d{1,3}\s*[-–.)]\s*/,"").trim().toLowerCase().replace(/\s+/g," ").slice(0,40),a:h.action})).filter(h=>h.k&&["band","unband","title","untitle","number","unnumber"].includes(h.a));
+ const hintOf=p=>{const r=new Set();if(!HX.length)return r;const t=text(p).replace(/^\s*\d{1,3}\s*[-–.)]\s*/,"").trim().toLowerCase().replace(/\s+/g," ");if(!t)return r;HX.forEach(h=>{if(t.startsWith(h.k)||(t.length>=10&&h.k.startsWith(t)))r.add(h.a)});return r};
+ const bandP=p=>{if(inTable(p))return false;const h=hintOf(p);if(h.has("unband"))return false;if(h.has("band"))return true;return isBand(p)};
  const isBandP=p=>false;
 
  /* styles: font, size, colors, spacing */
@@ -805,8 +1034,8 @@ async function build(o){
  const barSz=String(Math.round(o.hs*2));
  paras.forEach(p=>{
   const ts=qa(p,"t");if(!ts.some(t=>t.textContent.trim()))return;
-  const band=o.bands&&isBand(p);
-  const h=isHeading(p);
+  const band=o.bands&&bandP(p);
+  const hh0=hintOf(p),h=(isHeading(p)||hh0.has("title"))&&!hh0.has("untitle");
   if(band||o.caps==="all"||(o.caps==="headings"&&h)){ts.forEach(t=>{const r=t.parentNode,va=r&&qa(r,"vertAlign")[0];if(!(va&&attr(va,"val")==="superscript"))t.textContent=t.textContent.toUpperCase()});caps++}
   const want=o.num==="headings"?h:o.num==="paras"?!inTable(p):false;
   if(want&&!band&&!qa(p,"numPr").length&&!/^\s*(\d+|[A-Za-z])[.)]\s/.test(text(p))){
@@ -838,13 +1067,16 @@ async function build(o){
   const OPT=/^\s*[A-Za-zÀ-ɏ]{1,2}[.)]\s/;
   const numRe=/^\s*(\d{1,3})\s*[-–.)]\s*(?!\d)/;
   let seg=[],segs=[seg];
-  qa(doc,"p").forEach(p=>{if(inTable(p))return;const t=text(p).trim();if(!t)return;if(o.bands&&isBand(p)){seg=[];segs.push(seg);return}seg.push(p)});
+  qa(doc,"p").forEach(p=>{if(inTable(p))return;const t=text(p).trim();if(!t)return;if(o.bands&&bandP(p)){seg=[];segs.push(seg);return}seg.push(p)});
   const jobs=[];
+  qa(doc,"p").forEach(p=>{if(hintOf(p).has("unnumber"))qa(p,"numPr").forEach(e=>e.remove())});
   segs.forEach(sg=>{
-   if(sg.some(p=>qa(p,"numPr").length||numStyles.has(attr(qa(p,"pStyle")[0]||p,"val"))))return;                       /* already real numbering: leave it */
-   const typed=sg.filter(p=>{const t0=qa(p,"t")[0];return t0&&numRe.test(t0.textContent)&&!isHeading(p)});
+   if(sg.some(p=>qa(p,"numPr").length||numStyles.has(attr(qa(p,"pStyle")[0]||p,"val")))){
+    sg.forEach((p,i)=>{if(!hintOf(p).has("number")||qa(p,"numPr").length)return;const src=sg.slice(0,i).reverse().concat(sg.slice(i+1)).find(x=>qa(x,"numPr").length);if(!src)return;let pp=qa(p,"pPr")[0];if(!pp){pp=mk(doc,"pPr");p.insertBefore(pp,p.firstChild)}qa(pp,"ind").forEach(e=>e.remove());const np=qa(src,"numPr")[0].cloneNode(true);const aft=Array.from(pp.children).filter(c=>["cnfStyle","pStyle","keepNext","keepLines","pageBreakBefore","framePr","widowControl"].includes(c.localName)).pop();aft?aft.after(np):pp.insertBefore(np,pp.firstChild)});
+    return}                       /* already real numbering: leave it */
+   const typed=sg.filter(p=>{const t0=qa(p,"t")[0];return t0&&numRe.test(t0.textContent)&&!isHeading(p)&&!hintOf(p).has("unnumber")});
    if(typed.length){jobs.push({ps:typed,start:+qa(typed[0],"t")[0].textContent.match(numRe)[1],strip:true});return}
-   const cand=sg.filter(p=>{const t=text(p).trim();return !isHeading(p)&&!/^[_.\s]+$/.test(t)&&!OPT.test(t)&&!/^\s*(answer|ans|jawaab|tusaale)\b/i.test(t)&&(/\?\s*$/.test(t)||/_{3,}|\.{4,}/.test(t))});
+   const cand=sg.filter(p=>{const t=text(p).trim();if(hintOf(p).has("number"))return true;if(hintOf(p).has("unnumber"))return false;return !isHeading(p)&&!/^[_.\s]+$/.test(t)&&!OPT.test(t)&&!/^\s*(answer|ans|jawaab|tusaale)\b/i.test(t)&&(/\?\s*$/.test(t)||/_{3,}|\.{4,}/.test(t))});
    if(cand.length>=2)jobs.push({ps:cand,start:1,strip:false})});
   if(jobs.length){
    const nf="word/numbering.xml";let nx=zip.file(nf)?P.parseFromString(await zip.file(nf).async("string"),"application/xml"):null;
@@ -882,11 +1114,12 @@ async function build(o){
   nxt?(rp.insertBefore(a,nxt),rp.insertBefore(b,nxt)):(rp.appendChild(a),rp.appendChild(b))};
  let titled=0;
  qa(doc,"p").forEach(p=>{
-  if(inTable(p)||isBand(p)&&o.bands)return;
-  const t=text(p).trim();if(!t||t.length>70||/\?\s*$/.test(t)||/^\d{1,3}\s*[.\-)]/.test(t))return;
+  if(inTable(p)||bandP(p)&&o.bands)return;
+  const hh=hintOf(p),t=text(p).trim();if(hh.has("untitle"))return;
+  if(!t||(!hh.has("title")&&(t.length>70||/\?\s*$/.test(t)||/^\d{1,3}\s*[.\-)]/.test(t))))return;
   const ps=qa(p,"pStyle")[0],styled=ps&&/^(heading|title|subtitle)/i.test(attr(ps,"val"));
   const rs=qa(p,"r").filter(r=>qa(r,"t").some(x=>x.textContent.trim()));
-  if(styled||(rs.length&&rs.every(isBold))){rs.forEach(r=>setSz(r,String(Math.round(o.hs*2))));titled++}});
+  if(hh.has("title")||styled||(rs.length&&rs.every(isBold))){rs.forEach(r=>{setSz(r,String(Math.round(o.hs*2)));if(hh.has("title")&&!isBold(r)){let rp=qa(r,"rPr")[0];if(rp)rp.insertBefore(mk(doc,"b"),rp.firstChild)}});titled++}});
  if(titled)log.push(["Titles",`${titled} title${titled>1?"s":""} at ${o.hs} pt, text at ${o.size} pt`]);
  if(bars)log.push(["Part bars",`${bars} black heading bar${bars>1?"s":""}`]);
  if(o.caps!=="none")log.push(["Capitals",`${caps} paragraphs`]);
@@ -968,7 +1201,7 @@ async function build(o){
   const take=[],vals={};let ok=true;
   for(const p of lead.slice(0,8)){
    let t=textT(p);if(t.trim().length>110)break;
-   if(isBand(p)&&o.bands)break;
+   if(bandP(p)&&o.bands)break;
    const got={};let left=t;
    const sm=left.match(SUBJ);if(sm){got.t2=(sm[1]+" "+sm[2]).toUpperCase();left=left.replace(SUBJ,"")}
    for(const[re,k]of pats){const m=left.match(re);if(m){if(k)got[k]=m[m.length-1].trim();left=left.replace(re,"")}}
@@ -1023,7 +1256,7 @@ async function build(o){
   }
  }
  zip.file("word/document.xml",S.serializeToString(doc));
- return{data:await zip.generateAsync({type:"uint8array",compression:"DEFLATE"}),log};
+ return{data:await zip.generateAsync({type:"uint8array",compression:"DEFLATE"}),log,o};
 }
 loadStatus();
 </script>

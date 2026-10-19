@@ -141,6 +141,23 @@ def index():
     return send_from_directory(HERE, "index.html")
 
 
+@app.get("/manifest.webmanifest")
+def manifest():
+    return send_from_directory(HERE, "manifest.webmanifest", mimetype="application/manifest+json")
+
+
+@app.get("/sw.js")
+def sw():
+    r = send_from_directory(HERE, "sw.js", mimetype="text/javascript")
+    r.headers["Cache-Control"] = "no-cache"
+    return r
+
+
+@app.get("/icon-<int:n>.png")
+def icon(n):
+    return send_from_directory(HERE, f"icon-{n}.png") if n in (192, 512) else ("", 404)
+
+
 @app.get("/healthz")
 def healthz():
     return "ok"

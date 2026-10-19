@@ -43,6 +43,14 @@ COMMANDS = {
         label="Formatter", kind="json", thinking=False, search=False,
         route=[("gemini", "fast"), ("claude", "fast"), ("gpt", "fast")],
         desc="Put a Word file in your design. Light AI reads the title."),
+    "audit": dict(
+        label="Check the formatting", kind="json", thinking=False, search=False,
+        route=[("claude", "std"), ("gemini", "std"), ("gpt", "std")],
+        desc="Claude checks titles, numbering and design of a formatted file."),
+    "fix": dict(
+        label="Tell the formatter", kind="json", thinking=False, search=False,
+        route=[("claude", "std"), ("gemini", "std"), ("gpt", "std")],
+        desc="Tell the formatter what to correct."),
     "revise": dict(
         label="Change my document", kind="doc", thinking=False, search=False,
         route=[("claude", "std"), ("gpt", "std"), ("gemini", "std")],
@@ -101,6 +109,28 @@ EXAM_RULES = """EXAM RULES
 - Make questions go from easy to hard. Do not repeat a question. Do not give the answers. The marking scheme is a separate task."""
 
 
+HINTS_FORMAT = """Hints look like {"text": "first 40 characters of the paragraph, copied exactly", "action": "band|unband|title|untitle|number|unnumber", "why": "short reason"}.
+band = black heading bar, title = 14 pt bold title, number = real question number, un... = take it away."""
+
+AUDIT_RULES = """
+You check a formatted school exam document. You get an outline, one line per paragraph as `[index] KIND | text`.
+KIND is BAR (black heading bar), TITLE (14 pt bold title), N<number> (real numbered question, shows its number), TXT (normal text) or TBL (inside a table).
+Check: (1) every part or section heading (PART, SECTION, QIIMAYNTA, ...) is a BAR; (2) real titles are TITLE, and ordinary sentences, questions and answer lines are not;
+(3) question numbers run 1, 2, 3 ... inside each part with no gaps, no repeats, and are not missing where there are questions; (4) nothing is doubled (two titles, two boxes).
+Never change the wording. Only report real mistakes.
+Reply with ONLY JSON: {"summary": "one short sentence", "hints": [...], "options": {}}. options may only hold size, hs or font. Use empty lists when everything is right.
+""" + HINTS_FORMAT
+
+FIX_RULES = """
+The teacher is talking to a document formatter. You get the outline of the formatted file (one line per paragraph as `[index] KIND | text`, KIND is BAR, TITLE, N<number>, TXT or TBL),
+the current settings as JSON, and the teacher's message. Decide what to change.
+Reply with ONLY JSON: {"reply": "short friendly answer in the teacher's language", "hints": [...], "options": {...}}.
+options keys allowed: size 8-20, hs 8-30, font (Verdana|Arial|Times New Roman|Calibri|Georgia), caps (none|headings|all), bands, tbl, border, ib, gi, wm, lg, tb, bw, tight (true/false),
+num (none|headings|paras|auto), pn (none|n|x|xofy), pos (left|center|right), ft, t1, t2, t3, ic, im, it (text), mt, ml (millimetres 5-40).
+If the message is a question, answer it in reply and leave hints and options empty. If you cannot do what is asked, say so in reply.
+""" + HINTS_FORMAT
+
+
 def system_for(cmd, language_hint=""):
     s = BASE
     if cmd in ("build_document", "lesson", "exam", "worksheet", "answer_key", "translate", "revise"):
@@ -134,6 +164,8 @@ def system_for(cmd, language_hint=""):
               'Reply with ONLY a JSON array, no other text: [{"find": "exact wrong text", "replace": "corrected text", "why": "short reason"}]. '
               '"find" must be copied exactly from the text and be short (a word or a few words). Maximum 40 items. '
               'If there are no mistakes reply [].')
+    elif cmd in ("audit", "fix"):
+        s += AUDIT_RULES if cmd == "audit" else FIX_RULES
     elif cmd == "formatter":
         s += ('\nRead the start of an exam or lesson document. Reply with ONLY a JSON object, no other text: '
               '{"title": "short title for the second title line, in capitals, e.g. ENGLISH STUDIES EXAMINATION", '
