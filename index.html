@@ -272,14 +272,43 @@ input:focus{border-color:#9a9a9a}
 .au .go{padding:12px;font-size:15px}
 .comp textarea{font-family:inherit}
 .comp textarea::placeholder{color:var(--mute);font-family:inherit}
+
+/* ===== round 2: real AI-app layout ===== */
+.app{position:fixed;inset:0;height:auto;width:100%;margin:0 auto}
+.logo{display:none}
+header{position:relative}
+.hero .hl{display:none}
+.hero{margin:0 auto;padding:0 4px}
+.hero h2{font-size:clamp(28px,7vw,38px);font-weight:600;margin-bottom:6px}
+.hero p{display:none}
+.cards{margin-top:18px}
+.card{background:transparent}
+.m.a .bd{font-size:17px}
+.dock{padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+/* new chat screen: greeting and message box sit in the middle */
+.app:has(.hero){justify-content:center}
+.app:has(.hero) header{position:absolute;top:0;left:0;right:0}
+#thread:has(.hero){flex:none;overflow:visible;padding-bottom:14px}
+.app:has(.hero) .fine{display:none}
+/* phone: slide-in sidebar */
+@media (max-width:899px){
+ #hdrw{top:0;bottom:0;left:0;right:auto;width:84%;max-width:330px;max-height:none;margin:0;border-radius:0;background:var(--side);transform:translateX(-105%);padding-top:env(safe-area-inset-top,0px)}
+ #hdrw.on{transform:none}
+ #hdrw .fl-h{flex-direction:column;gap:2px}
+ #hdrw #hnew{background:transparent;color:var(--ink);border:0;text-align:left;font-weight:500;padding:10px}
+ #hdrw #hout{border:0;background:none;color:var(--mute);text-align:left;padding:10px}
+ #hdrw .sh-h h2{font:600 19px/1 "Inter",system-ui,sans-serif}
+ #hbtn .lbl{display:none}
+}
+@media (min-width:900px){body{padding-left:0}.app{left:300px;right:0;width:auto;max-width:none;margin:0}.app>header,.app>#thread,.app>.dock{width:100%;max-width:820px;margin-left:auto;margin-right:auto}.app>#thread{overflow-y:auto}}
 </style>
 </head>
 <body>
 <div class="app">
  <header>
+  <button class="ghost ic" id="hbtn" aria-haspopup="dialog" aria-label="Menu and chat history"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
   <div class="logo">Q</div>
   <h1>Qore</h1><span class="sp"></span>
-  <button class="ghost ic" id="hbtn" aria-haspopup="dialog" aria-label="Chat history"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4M12 8v4l3 2"/></svg><span class="lbl">History</span></button>
   <button class="ghost ic" id="inst"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="lbl">Install</span></button>
   <button class="ghost ic" id="files" aria-haspopup="dialog" aria-label="My files"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></svg><span class="lbl">Files</span><span id="fcount"></span></button>
   <button class="ghost ic" id="open" aria-haspopup="dialog"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span class="lbl">Design</span></button>
@@ -410,7 +439,7 @@ const size=n=>n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/102
 const fcard=(name,sub,ext)=>`<div class="fc"><div class="badge">${ext}</div><div class="t"><b>${esc(name)}</b><span>${esc(sub)}</span></div></div>`;
 function mkHero(){
  const h=document.createElement("div");h.className="hero";
- h.innerHTML=`<div class="hl">Q</div><h2>What should we make today?</h2><p>Write documents, exams and lessons with AI, or put your own Word file in the school design.</p><div class="cards">
+ h.innerHTML=`<div class="hl">Q</div><h2>How can I help you today?</h2><p>Write documents, exams and lessons with AI, or put your own Word file in the school design.</p><div class="cards">
  <button class="card" data-q="/build_document "><b>Build a document</b><span>Researches, thinks and writes from sources</span></button>
  <button class="card" data-q="/exam "><b>Make an exam</b><span>Parts, marks and writing lines</span></button>
  <button class="card" data-f="1"><b>Format my Word file</b><span>Your design. Claude checks the result</span></button>
