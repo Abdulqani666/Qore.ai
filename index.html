@@ -270,7 +270,7 @@ header h1{font-weight:600;font-size:17px}
 input[type=text],input[type=email],input[type=password],input[type=number],select{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:11px 14px;font-size:16px;width:100%;outline:none}
 input:focus{border-color:#9a9a9a}
 .au{gap:10px;max-width:380px}.au .tabs{background:var(--soft);padding:3px;border-radius:12px}.au .tabs .btn{border:0;background:transparent;box-shadow:none}.au .tabs .btn.pri{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-.au .go{padding:12px;font-size:15px}
+.au .go{padding:12px;font-size:15px}.gsep{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:13px}.gsep::before,.gsep::after{content:'';flex:1;border-top:1px solid var(--line)}.gbtn{min-height:44px;display:flex;justify-content:center}
 .comp textarea{font-family:inherit}
 .comp textarea::placeholder{color:var(--mute);font-family:inherit}
 
@@ -693,19 +693,29 @@ let authBox=null;
 function askAuth(){
  if(authBox&&authBox.isConnected&&authBox._p)return authBox._p;
  let mode="in";
- const b=say(`<p><b>Sign in to Qore</b></p><p>Your chats are saved to your account and open on any phone.</p><div class="au"><div class="tabs"><button class="btn pri" type="button" data-m="in">Sign in</button><button class="btn" type="button" data-m="up">Create account</button></div><input type="email" autocomplete="email" placeholder="Email" aria-label="Email"><input type="password" autocomplete="current-password" placeholder="Password (8+ characters)" aria-label="Password"><input type="text" class="code" placeholder="Access code from the school" aria-label="Access code" hidden><button class="btn pri go" type="button">Sign in</button><p class="err" hidden></p></div>`);
+ const b=say(`<p><b>Sign in to Qore</b></p><p>Your chats are saved to your account and open on any phone.</p><div class="au"><div class="tabs"><button class="btn pri" type="button" data-m="in">Sign in</button><button class="btn" type="button" data-m="up">Create account</button></div><input type="email" autocomplete="email" placeholder="Email" aria-label="Email"><input type="password" autocomplete="current-password" placeholder="Password (8+ characters)" aria-label="Password"><input type="text" class="code" placeholder="Access code from the school" aria-label="Access code" hidden><button class="btn pri go" type="button">Sign in</button><div class="gsep" hidden><span>or</span></div><div class="gbtn" hidden></div><p class="err" hidden></p></div>`);
  const [em,pw,code]=b.querySelectorAll("input"),go=b.querySelector(".go"),er=b.querySelector(".err");
  const tabs=b.querySelectorAll("[data-m]");
  const setM=m=>{mode=m;tabs.forEach(t=>t.classList.toggle("pri",t.dataset.m===m));go.textContent=m==="up"?"Create account":"Sign in";code.hidden=!(m==="up"&&SRV&&SRV.invite);pw.autocomplete=m==="up"?"new-password":"current-password"};
  tabs.forEach(t=>t.onclick=()=>setM(t.dataset.m));
- const p=new Promise(ok=>{
+ const p=new Promise(ok=>{b._ok=ok;
   const doit=async()=>{er.hidden=true;go.disabled=true;
    try{const j=await api("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:mode==="up"?"signup":"login",email:em.value,password:pw.value,code:code.value})});
     access=j.token;try{localStorage.setItem("qore-access",access)}catch(e){}
     await loadStatus();b.innerHTML="<p>Signed in as <b>"+esc(j.email)+"</b>.</p>";ok(true);authBox=null;histRefresh()}
    catch(e){er.textContent=e.message;er.hidden=false}go.disabled=false};
   go.onclick=doit;[em,pw,code].forEach(i=>i.onkeydown=e=>{if(e.key==="Enter")doit()})});
- b._p=p;authBox=b;em.focus();return p}
+ b._p=p;authBox=b;em.focus();
+ if(SRV&&SRV.google)googleBtn(b,code,async cred=>{er.hidden=true;try{const j=await api("/api/auth/google",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({credential:cred,code:code.value})});
+   access=j.token;try{localStorage.setItem("qore-access",access)}catch(e){}await loadStatus();b.innerHTML="<p>Signed in as <b>"+esc(j.email)+"</b>.</p>";authBox=null;histRefresh();b._ok&&b._ok(true)}
+  catch(e){er.textContent=e.message;er.hidden=false;if(SRV&&SRV.invite)code.hidden=false}});
+ return p}
+function googleBtn(b,code,done){
+ const run=()=>{try{google.accounts.id.initialize({client_id:SRV.google,callback:r=>done(r.credential)});
+  const box=b.querySelector(".gbtn");box.hidden=false;b.querySelector(".gsep").hidden=false;
+  google.accounts.id.renderButton(box,{theme:"outline",size:"large",width:Math.min(340,b.clientWidth||300),text:"continue_with",shape:"pill"})}catch(e){}};
+ if(window.google&&google.accounts)return run();
+ const sc=document.createElement("script");sc.src="https://accounts.google.com/gsi/client";sc.async=true;sc.onload=run;document.head.appendChild(sc)}
 /* history */
 let cid=rid(),saveT=null,restoring=false,fileCache={};
 const canSave=()=>SRV&&SRV.accounts&&SRV.authed&&!restoring;

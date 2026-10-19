@@ -81,3 +81,13 @@ def login(email, password):
 def email_of(uid):
     r = run("SELECT email FROM users WHERE id=%s", (uid,), "one")
     return r[0] if r else ""
+
+
+def google_user(email):
+    """Returns (user id, is_new). Google accounts get a random password nobody knows."""
+    email = (email or "").strip().lower()
+    row = run("SELECT id FROM users WHERE email=%s", (email,), "one")
+    if row:
+        return row[0], False
+    row = run("INSERT INTO users(email,pw) VALUES(%s,%s) RETURNING id", (email, generate_password_hash(os.urandom(24).hex())), "one")
+    return row[0], True

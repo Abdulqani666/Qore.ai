@@ -180,7 +180,7 @@ def healthz():
 
 @app.get("/api/status")
 def status():
-    return jsonify(locked=bool(password()) or db.ENABLED, authed=authed(), accounts=db.ENABLED, invite=bool(password()),
+    return jsonify(locked=bool(password()) or db.ENABLED, authed=authed(), accounts=db.ENABLED, invite=bool(password()), google=ai.env("GOOGLE_CLIENT_ID"),
                    email=db.email_of(user_id()) if db.ENABLED and user_id() else "",
                    commands={k: {"label": v["label"], "desc": v["desc"], "kind": v["kind"]} for k, v in COMMANDS.items()},
                    tags=TAGS, models=ai.describe() if authed() else {}, fake=ai.FAKE, pdf=soffice_ok())
@@ -388,6 +388,35 @@ def auth():
         return jsonify(error="The database is not ready yet. Try again in a minute. " + str(e)[:80]), 503
     if err:
         return jsonify(error=err), 400
+    return jsonify(token=db.make_token(uid), email=db.email_of(uid))
+
+
+@app.post("/api/auth/google")
+def auth_google():
+    cid = ai.env("GOOGLE_CLIENT_ID")
+    if not db.ENABLED or not cid:
+        return jsonify(error="Google sign-in is not set up on this server."), 501
+    if auth_limited():
+        return jsonify(error="Too many tries. Wait a while and try again."), 429
+    j = request.get_json(silent=True) or {}
+    cred = str(j.get("credential", ""))
+    try:
+        if ai.FAKE and cred.startswith("fake:"):
+            email = cred[5:]
+        else:
+            r = requests.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": cred}, timeout=15)
+            info = r.json() if r.ok else {}
+            if info.get("aud") != cid or str(info.get("email_verified")).lower() != "true" or not info.get("email"):
+                return jsonify(error="Google could not confirm this account. Try again."), 400
+            email = info["email"]
+        uid, new = db.google_user(email)
+        if new:
+            pw = password()
+            if pw and not hmac.compare_digest(str(j.get("code", "")), pw):
+                db.run("DELETE FROM users WHERE id=%s", (uid,))
+                return jsonify(error="New accounts need the access code from the school. Type it in the box, then tap Google again.", need_code=True), 403
+    except Exception as e:      # noqa: BLE001
+        return jsonify(error="Google sign-in failed. " + str(e)[:80]), 503
     return jsonify(token=db.make_token(uid), email=db.email_of(uid))
 
 
