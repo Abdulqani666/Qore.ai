@@ -947,12 +947,18 @@ async function showImages(q){
   t.querySelectorAll("[data-c]").forEach(b=>b.onclick=async()=>{const x=j.items[+b.dataset.c];try{await navigator.clipboard.writeText(`${x.title} by ${x.by} (${x.license}) ${x.url||""}`);b.textContent="Copied"}catch(e){b.textContent="Failed"}});
  }catch(e){if(e.auth&&await ensureAI())return showImages(q);t.innerHTML=`<p class="err">${esc(e.message)}</p>`}
  down()}
+async function testModels(){
+ const b=say("<p>Testing each AI with a tiny question...</p>");
+ try{const j=await api("/api/diagnose");
+  b.innerHTML="<p>Test results:</p><ul class='steps'>"+Object.entries(j.results).map(([k,r])=>`<li><b>${esc(j.labels[k])}</b>: ${r.ok?`works (${esc(r.model)}, ${r.seconds}s)`:`<span class="err">fails: ${esc(r.error)}</span>`}</li>`).join("")+"</ul>"}
+ catch(e){b.innerHTML='<p class="err">Test failed: '+esc(e.message)+"</p>"}}
 async function showModels(){
  await loadStatus();
  if(!SRV){say("<p>The AI server is not connected.</p>");return}
  const m=SRV.models||{};
  if(SRV.locked&&!SRV.authed){say("<p>Locked. Send any AI task to enter the password.</p>");return}
- say("<p>AI models:</p><ul class='steps'>"+Object.values(m).map(p=>`<li><b>${esc(p.label)}</b>: ${p.on?`ready. Quick: ${esc(p.models.fast)}, standard: ${esc(p.models.std)}, deep: ${esc(p.models.deep)}`:"no key set"}</li>`).join("")+"</ul><p>Add <b>#claude</b>, <b>#gpt</b> or <b>#gemini</b> to any task to choose a model. Add <b>#deep</b> for more thinking or <b>#fast</b> for speed.</p>")}
+ say("<p>AI models:</p><ul class='steps'>"+Object.values(m).map(p=>`<li><b>${esc(p.label)}</b>: ${p.on?`ready. Quick: ${esc(p.models.fast)}, standard: ${esc(p.models.std)}, deep: ${esc(p.models.deep)}`:"no key set"}</li>`).join("")+"</ul><p>Add <b>#claude</b>, <b>#gpt</b> or <b>#gemini</b> to any task to choose a model. Add <b>#deep</b> for more thinking or <b>#fast</b> for speed.</p>");
+ await testModels()}
 function help(){
  say("<p>Type <b>/</b> to pick a task and <b>#</b> to pick a model.</p><ul class='steps'>"+CMDS().map(([k,c])=>`<li><b>/${esc(k)}</b>: ${esc(c.desc||c.label)}</li>`).join("")+"</ul>")}
 async function send(){

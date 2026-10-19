@@ -394,6 +394,29 @@ def auth():
     return jsonify(token=db.make_token(uid), email=db.email_of(uid))
 
 
+@app.get("/api/diagnose")
+def diagnose():
+    if not authed():
+        return jsonify(error="Please sign in.", auth=True), 401
+    import concurrent.futures as cf
+    on = ai.available()
+
+    def one(p):
+        t0 = time.time()
+        try:
+            ids = ai._listed(p)
+            _t, model, _s = ai.call(p, "fast", "Reply with the single word OK.", [{"role": "user", "text": "Say OK"}], max_tokens=30)
+            return p, {"ok": True, "model": model, "seconds": round(time.time() - t0, 1)}
+        except Exception as e:      # noqa: BLE001
+            return p, {"ok": False, "error": str(e)[:300], "seconds": round(time.time() - t0, 1),
+                       "seen": (len(ids) if ids else 0) if "ids" in dir() else 0}
+    out = {}
+    with cf.ThreadPoolExecutor(3) as ex:
+        for p, r in ex.map(one, [p for p in ("claude", "gpt", "gemini") if on.get(p)]):
+            out[p] = r
+    return jsonify(results=out, labels=ai.LABEL)
+
+
 @app.post("/api/auth/google")
 def auth_google():
     cid = ai.env("GOOGLE_CLIENT_ID")
