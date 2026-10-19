@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f6f5f2">
+<meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
@@ -208,6 +208,70 @@ select,textarea,input[type=text],input[type=number]{width:100%;padding:9px 10px;
 }
 .m.u .bd{border-radius:18px 18px 4px 18px}
 .dock{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+/* ===== chat-assistant look (like ChatGPT / Claude) ===== */
+:root{--bg:#fff;--panel:#fff;--ink:#0d0d0d;--mute:#6e6e73;--line:#e5e5e5;--soft:#f4f4f4;--bubble:#f1f1f1;--side:#f9f9f9;--accent:#0d0d0d}
+@media (prefers-color-scheme:dark){:root{--bg:#212121;--panel:#2a2a2a;--ink:#ececec;--mute:#a1a1a6;--line:#3a3a3a;--soft:#303030;--bubble:#303030;--side:#181818;--accent:#ececec}}
+meta[name=theme-color]{content:#fff}
+body{font-size:16px;line-height:1.65}
+header{background:var(--bg);backdrop-filter:none;padding-top:calc(8px + env(safe-area-inset-top,0px));padding-bottom:8px}
+header h1{font-weight:600;font-size:17px}
+.ghost{border-color:transparent;border-radius:10px}
+.ghost:hover{background:var(--soft)}
+.logo{border-radius:50%;width:28px;height:28px}
+#thread{padding:6px 18px 24px}
+.m{margin:22px 0;gap:0}
+.av{display:none}
+.m.a .bd{font-size:16.5px;line-height:1.7}
+.m.u .bd{background:var(--bubble);border-radius:22px;padding:10px 18px;max-width:80%}
+.m.u .fc{background:var(--panel)}
+.fc{border-radius:16px;box-shadow:none}
+.acts{gap:6px}
+.btn{border-radius:10px;padding:7px 13px;font-size:13.5px;background:var(--panel);border-color:var(--line)}
+.btn.pri{border-radius:10px}
+.btn:hover{background:var(--soft);border-color:var(--line)}
+.btn.pri:hover{background:var(--accent);opacity:.88}
+.steps{font-size:14.5px}
+.dock{padding:4px 18px calc(10px + env(safe-area-inset-bottom,0px))}
+.comp{border-radius:28px;padding:8px 8px 8px 10px;border:1px solid var(--line);box-shadow:0 2px 12px rgba(0,0,0,.07);background:var(--panel)}
+.comp.on{border-color:#b5b5b5}
+.plus{background:transparent;border:1px solid var(--line)}
+.send{width:36px;height:36px}
+.fine{font-size:11.5px;margin-top:6px}
+.hero{margin:9vh auto 0;max-width:640px}
+.hero .hl{border-radius:50%;width:52px;height:52px;margin-bottom:20px}
+.hero h2{font-size:clamp(26px,5.5vw,34px);font-weight:600;letter-spacing:-.025em}
+.hero p{font-size:15.5px}
+.cards{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.card{border-radius:999px;padding:9px 16px;flex:none}
+.card b{font-weight:500;font-size:14px}
+.card span{display:none}
+.card:hover{transform:none;box-shadow:none;background:var(--soft);border-color:var(--line)}
+#sheet,#fl,#hdrw{background:var(--bg)}
+.hi{padding:2px 0;border:0;border-radius:10px;gap:2px}
+.hi:hover{background:var(--soft)}
+.hi button.o{padding:9px 10px;border-radius:10px}
+.hi small{display:none}
+.hi b{font-size:14px}
+.hi .btn{border:0;background:none;color:var(--mute);padding:6px 9px;opacity:0}
+.hi:hover .btn,.hi:focus-within .btn{opacity:1}
+@media (hover:none){.hi .btn{opacity:1}}
+@media (min-width:900px){
+ #hdrw{background:var(--side);border-right:0}
+ #hdrw .sh-h h2{font:600 18px/1 "Inter",system-ui,sans-serif;letter-spacing:-.02em}
+ #hdrw .fl-h{flex-direction:column;gap:2px}
+ #hdrw #hnew{background:transparent;color:var(--ink);border:0;text-align:left;font-weight:500;padding:9px 10px}
+ #hdrw #hnew:hover{background:var(--soft)}
+ #hdrw #hout{border:0;background:none;color:var(--mute);text-align:left;padding:9px 10px}
+ #hdrw #hwho{padding:0 10px;font-size:12px}
+ .app{max-width:820px}
+}
+[hidden]{display:none!important}
+input[type=text],input[type=email],input[type=password],input[type=number],select{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:11px 14px;font-size:16px;width:100%;outline:none}
+input:focus{border-color:#9a9a9a}
+.au{gap:10px;max-width:380px}.au .tabs{background:var(--soft);padding:3px;border-radius:12px}.au .tabs .btn{border:0;background:transparent;box-shadow:none}.au .tabs .btn.pri{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.au .go{padding:12px;font-size:15px}
+.comp textarea{font-family:inherit}
+.comp textarea::placeholder{color:var(--mute);font-family:inherit}
 </style>
 </head>
 <body>
@@ -465,6 +529,7 @@ async function api(path,opt={}){
 const anyModel=()=>!!SRV&&Object.values(SRV.models||{}).some(m=>m.on);
 async function loadStatus(){
  try{SRV=await api("/api/status")}catch(e){SRV=null}
+ if(typeof histRefresh==="function"&&typeof DESK!=="undefined"&&DESK.matches)setTimeout(histRefresh,0);
  const f=$("fine");
  if(!SRV)f.textContent="AI server not connected. Only /formatter works. Your file stays on this device.";
  else if(SRV.locked&&!SRV.authed)f.textContent="Locked. Send an AI task and I will ask for the password.";
