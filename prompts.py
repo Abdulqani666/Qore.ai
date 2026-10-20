@@ -43,6 +43,9 @@ COMMANDS = {
         label="Formatter", kind="json", thinking=False, search=False,
         route=[("gemini", "fast"), ("claude", "fast"), ("gpt", "fast")],
         desc="Put a Word file in your design. Light AI reads the title."),
+    "replace": dict(
+        label="Replace words", kind="local", thinking=False, search=False, route=[],
+        desc="Change a word in the last document: /replace old => new. No AI used."),
     "audit": dict(
         label="Check the formatting", kind="json", thinking=False, search=False,
         route=[("claude", "std"), ("gemini", "std"), ("gpt", "std")],
@@ -112,6 +115,7 @@ EXAM_RULES = """EXAM RULES
 - Matching: a table with columns Word | Answer | Meaning, the Answer column empty, more meanings than words is allowed.
 - Short answer and structured questions: put the marks in brackets after the question, then 1 to 3 writing lines.
 - Do not add a diagram section or say "look at the picture" unless a picture was attached.
+- If a list "PICTURES FROM THE SOURCE FILE" is given, those pictures are real and must be used exactly as they are. Put [[PICTURE: pic:3 | Figure 1: caption]] on its own line right before the question that uses picture 3, and write a question that really needs that picture (for example "Look at Figure 1. Who is the man in the picture?"). Keep the caption as in the source. Do not use a picture that does not fit.
 - Use only content from the attached notes or sources. If no notes were given, keep to the standard school curriculum for that grade.
 - Make questions go from easy to hard. Do not repeat a question. Do not give the answers. The marking scheme is a separate task."""
 
@@ -169,6 +173,8 @@ HOW TO USE IT
 - Four saved templates: in the Design button, "My templates" has Arabic exams (right to left, Arabic labels), Somali exams (Somali labels and footer), Other subjects exams, and Lessons. Tap one to use it. Each starts with a ready design; change the design, then tap "Save design to this template" to keep it. Tap a template, then "Read it from a Word or LibreOffice file…" to learn it from the teacher's own file. Then attach a file and send /formatter.
 - /lesson writes a textbook-style lesson like the school sample: school header with UNIT and topic, black section bars, bold key names and dates, pictures with "Figure 1:" captions found from free picture sites (with credit at the end), ACTIVITY and EXERCISE parts (questions, fill the blanks with a word box), footer "SUBJECT TEACHER: name" and page numbers. Example: /lesson Unit 2 History of Somalia, grade 8 Social Studies, the colonial period. The design comes from the Lessons template.
 - Copying pictures: /images with words finds free pictures with credit. /images with a PDF attached (and no words) pulls every picture out of the PDF with its "Figure N" caption, and each one has Copy and Save buttons plus Save all (zip). /lesson with a PDF attached can reuse the PDF pictures in the new lesson.
+- Exact pictures in exams: attach the source (a PDF or Word file with pictures) and send /exam. Qore finds the pictures in it and the AI puts them, unchanged, before the questions that need them, with the source caption. The same works for /lesson, /worksheet and /build_document.
+- Replace words: /replace old => new changes a word in the last document Qore made or formatted (no AI, many changes allowed, one per line), or attach a Word file with /replace to get a changed copy. It matches exact capitals first, then any capitals.
 - Template connector (Word and LibreOffice): in the Design button, tap "Use my Word or LibreOffice template…" and pick a .docx, .dotx, .odt, .ott, .doc or .rtf file. Qore reads its font, text size, title size, margins, title line, footer text, page numbers, logo, black and white and page border, then saves it as "My saved design". After that, attach a file and send /formatter to use it. It copies the style only, not the content. Qore itself uses LibreOffice on the server to open .odt files and to make PDFs.
 - Theme button (top bar): switches Auto, Light and Dark. Search box in the chat history menu finds old chats.
 - Other connectors (Google Drive, Gmail, OneDrive, Dropbox) are NOT available yet. If asked, say so and offer the template connector or the + button to attach files.

@@ -808,11 +808,11 @@ async function loadStatus(){
  else if(SRV.locked&&!SRV.authed)f.textContent="Locked. Send an AI task and I will ask for the password.";
  else if(!anyModel())f.textContent="No AI key is set yet. /formatter and /images work.";
  else f.textContent="AI ready: "+Object.values(SRV.models).filter(m=>m.on).map(m=>m.label).join(", ")+". /formatter keeps your file on this device."}
-const ALIAS={build:"build_document",doc:"build_document",document:"build_document",format:"formatter",key:"answer_key",markscheme:"answer_key",scheme:"answer_key",image:"images",pics:"images",pictures:"images",summary:"summarize",proof:"proofread",edit:"revise",change:"revise",model:"models",test:"exam",lessonplan:"lesson"};
+const ALIAS={build:"build_document",doc:"build_document",document:"build_document",format:"formatter",key:"answer_key",markscheme:"answer_key",scheme:"answer_key",image:"images",pics:"images",pictures:"images",summary:"summarize",proof:"proofread",edit:"revise",change:"revise",swap:"replace",find:"replace",model:"models",test:"exam",lessonplan:"lesson"};
 const TALIAS={chatgpt:"gpt",openai:"gpt",google:"gemini",think:"deep",slow:"deep",quick:"fast",web:"search"};
 const TAGKEYS=["claude","gpt","gemini","deep","fast","search","nosearch","noai"];
 const TAGHELP={claude:"Use Claude",gpt:"Use ChatGPT",gemini:"Use Gemini",deep:"Biggest model, more thinking",fast:"Smallest, quickest model",search:"Search the web first",nosearch:"Do not search the web",noai:"Format without any AI"};
-const ORDER=["build_document","formatter","fix","exam","answer_key","lesson","worksheet","translate","summarize","proofread","revise","ask","images","models"];
+const ORDER=["build_document","formatter","fix","exam","answer_key","lesson","worksheet","translate","summarize","proofread","revise","replace","ask","images","models"];
 const CMDS=()=>{const c=(SRV&&SRV.commands)||{formatter:{label:"Formatter",desc:"Put a Word file in your design."}};return ORDER.filter(k=>c[k]).map(k=>[k,c[k]])};
 function parse(s){
  let cmd=null;const tags=[];
@@ -1088,8 +1088,22 @@ async function composeFigure(blob,cap){
 let PDFPICS=[];
 const b64bytes=b=>Uint8Array.from(atob(b),c=>c.charCodeAt(0));
 async function pdfPictures(f){const fd=new FormData();fd.append("file",f);const j=await api("/api/pdfimages",{method:"POST",body:fd});return j.items}
+async function docxPictures(f){
+ try{const z=await JSZip.loadAsync(await f.arrayBuffer());
+  const rels=await z.file("word/_rels/document.xml.rels").async("string"),map={};
+  for(const m of rels.matchAll(/<Relationship [^>]*>/g)){const id=(m[0].match(/Id="([^"]+)"/)||[])[1],t=(m[0].match(/Target="([^"]+)"/)||[])[1];if(id&&t&&/media\//.test(t))map[id]=t}
+  const doc=new DOMParser().parseFromString(await z.file("word/document.xml").async("string"),"application/xml");
+  const out=[],seen=new Set();let last="";
+  for(const p of qa(doc,"p")){const t=qa(p,"t").map(x=>x.textContent).join("").trim();
+   for(const bl of Array.from(p.getElementsByTagName("*")).filter(e=>e.localName==="blip")){
+    const id=bl.getAttribute("r:embed"),tg=map[id];if(!tg)continue;const path="word/"+tg.replace(/^\/?(word\/)?/,""),fi=z.file(path);if(!fi)continue;
+    const ext=((path.match(/\.(\w+)$/)||[])[1]||"").toLowerCase();if(!["png","jpg","jpeg"].includes(ext))continue;if(/logo/i.test(path))continue;
+    const b64=await fi.async("base64");if(b64.length<4000||seen.has(b64))continue;seen.add(b64);
+    out.push({mime:ext==="png"?"image/png":"image/jpeg",b64,page:0,caption:"",ctx:t||last})}
+   if(t)last=t.slice(0,80)}
+  return out}catch(e){return[]}}
 async function makeFigure(q,cap){
- const mp=String(q).trim().match(/^pdf:\s*(\d+)$/i);
+ const mp=String(q).trim().match(/^(?:pdf|pic):\s*(\d+)$/i);
  if(mp){const p=PDFPICS[+mp[1]-1];if(!p)return null;const f=await composeFigure(new Blob([b64bytes(p.b64)],{type:p.mime}),cap);return f?{...f,credit:""}:null}
  try{const j=await api("/api/images?q="+encodeURIComponent(q));
   for(const it of (j.items||[]).slice(0,5)){if(!it.thumb)continue;
@@ -1104,6 +1118,11 @@ async function mdToDocx(md){
  L=L.slice(i);
  const FIGS={};
  await Promise.all(L.map(async(ln,k)=>{const m=ln.trim().match(/^\[\[\s*FIGURE\s*:\s*(.+?)\s*\|\s*(.+?)\s*\]\]$/i);if(m)FIGS[k]=await makeFigure(m[1],m[2])}));
+ const PICS={};
+ await Promise.all(L.map(async(ln,k)=>{const m=ln.trim().match(/^\[\[\s*PICTURE\s*:\s*(?:pdf|pic)\s*:\s*(\d+)\s*(?:\|\s*(.*?))?\s*\]\]$/i);if(!m)return;const p=PDFPICS[+m[1]-1];if(!p)return;
+  try{const bytes=b64bytes(p.b64),url=URL.createObjectURL(new Blob([bytes],{type:p.mime}));
+   const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});URL.revokeObjectURL(url);
+   PICS[k]={bytes,ext:p.mime==="image/png"?"png":"jpg",w:im.naturalWidth,h:im.naturalHeight,caption:(m[2]||"").trim()}}catch(e){}}));
  const figMedia=[],credits=[];let pendFig=null;
  const isAr=s=>{const a=(s.match(/[\u0600-\u06FF]/g)||[]).length,l=(s.match(/[A-Za-z]/g)||[]).length;return a>l};
  const runs=(s,bold)=>{const R2=isAr(s);return s.split("**").map((g,k)=>[g,k%2===1||bold]).filter(x=>x[0]).map(([g,b])=>`<w:r>${b||R2?`<w:rPr>${b?"<w:b/><w:bCs/>":""}${R2?"<w:rtl/>":""}</w:rPr>`:""}<w:t xml:space="preserve">${xe(g)}</w:t></w:r>`).join("")};
@@ -1120,6 +1139,10 @@ async function mdToDocx(md){
    x+=`<w:tbl><w:tblPr>${isAr(rows[0].join(" "))?"<w:bidiVisual/>":""}<w:tblW w:w="5000" w:type="pct"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tblBorders></w:tblPr><w:tblGrid>${Array(n).fill(`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>`+rows.map((r,ri)=>`<w:tr>${Array.from({length:n},(_,c)=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/></w:tcPr>${para(r[c]||"",{a:40,bold:ri===0})}</w:tc>`).join("")}</w:tr>`).join("")+`</w:tbl>`+para("",{a:60});continue}
   let m;
   if(/^\[\[\s*FIGURE\s*:/i.test(s.trim())){if(FIGS[k])pendFig=FIGS[k];continue}
+  if(/^\[\[\s*PICTURE\s*:/i.test(s.trim())){const f=PICS[k];if(!f)continue;const n=figMedia.length+1;figMedia.push(f);
+   let cx=f.w*9525,cy=f.h*9525;const sc=Math.min(1,3960000/cx,2520000/cy);cx=Math.round(cx*sc);cy=Math.round(cy*sc);
+   x+=`<w:p><w:pPr><w:keepNext/><w:spacing w:before="100" w:after="${f.caption?20:100}"/><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${9100+n}" name="Picture ${n}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="pic${n}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdFig${n}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+   if(f.caption)x+=`<w:p><w:pPr><w:spacing w:before="0" w:after="100"/><w:jc w:val="center"/></w:pPr>${runs(f.caption,false)}</w:p>`;continue}
   if((m=s.match(/^#{3,6}\s+(.*)$/))){x+=`<w:p><w:pPr><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="000000"/></w:pBdr>${isAr(m[1])?"<w:bidi/>":""}<w:spacing w:before="160" w:after="80"/></w:pPr>${runs(m[1].replace(/\*\*/g,""),true)}</w:p>`;continue}
   if((m=s.match(/^>\s?(.*)$/))){const bx=["top","left","bottom","right"].map(e=>`<w:${e} w:val="single" w:sz="6" w:space="4" w:color="000000"/>`).join("");x+=`<w:p><w:pPr>${isAr(m[1])?"<w:bidi/>":""}<w:pBdr>${bx}</w:pBdr><w:spacing w:before="120" w:after="160"/><w:ind w:left="113" w:right="113"/></w:pPr>${runs(m[1],true)}</w:p>`;continue}
   if((m=s.match(/^#{1,6}\s+(.*)$/)))x+=para(m[1].replace(/\*\*/g,""),{bold:1,b:140,a:80,keep:1});
@@ -1130,10 +1153,10 @@ async function mdToDocx(md){
  }
  if(credits.length)x+=para("Pictures: "+[...new Set(credits)].join("; "),{b:120});
  const z=new JSZip();
- z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`);
+ z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`);
  z.file("_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/officeDocument" Target="word/document.xml"/></Relationships>`);
- z.file("word/_rels/document.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/styles" Target="styles.xml"/>${figMedia.map((f,n)=>`<Relationship Id="rIdFig${n+1}" Type="${R}/image" Target="media/fig${n+1}.png"/>`).join("")}</Relationships>`);
- figMedia.forEach((f,n)=>z.file(`word/media/fig${n+1}.png`,f.bytes));
+ z.file("word/_rels/document.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/styles" Target="styles.xml"/>${figMedia.map((f,n)=>`<Relationship Id="rIdFig${n+1}" Type="${R}/image" Target="media/fig${n+1}.${f.ext||"png"}"/>`).join("")}</Relationships>`);
+ figMedia.forEach((f,n)=>z.file(`word/media/fig${n+1}.${f.ext||"png"}`,f.bytes));
  z.file("word/styles.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:eastAsia="Verdana" w:cs="Verdana"/><w:sz w:val="20"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`);
  z.file("word/document.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>${x}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`);
  return{bytes:await z.generateAsync({type:"uint8array"}),meta}}
@@ -1207,9 +1230,15 @@ async function runAI(cmd,text,tags,files,ctx={}){
  if(cmd==="revise"&&!lastDoc&&!files.length){say("<p>Make or attach a document first, then ask for changes.</p>");return}
  busy=true;const t=typing();working(t,["Sending..."]);
  try{
-  if(cmd==="lesson"||cmd==="build_document"){const pf=files.filter(f=>/\.pdf$/i.test(f.name));PDFPICS=[];
-   for(const f of pf){try{PDFPICS.push(...await pdfPictures(f))}catch(e){}}
-   if(PDFPICS.length)text+="\n\nPICTURES FROM THE ATTACHED PDF (you may use them; write [[FIGURE: pdf:N | Figure k: caption]] where N is the number below):\n"+PDFPICS.map((p,i)=>`pdf:${i+1} = page ${p.page}, ${p.caption||"no caption"}`).join("\n")}
+  if(["lesson","build_document","exam","worksheet"].includes(cmd)){PDFPICS=[];
+   for(const f of files){try{
+    if(/\.pdf$/i.test(f.name))PDFPICS.push(...(await pdfPictures(f)).map(p=>({...p,ctx:`page ${p.page}${p.caption?", "+p.caption:""}`})));
+    else if(/\.docx$/i.test(f.name))PDFPICS.push(...await docxPictures(f))}catch(e){}}
+   if(PDFPICS.length){
+    const ex=cmd==="exam"||cmd==="worksheet";
+    text+=ex?"\n\nPICTURES FROM THE SOURCE FILE (use them exactly as they are. Write [[PICTURE: pic:N | Figure k: caption]] on its own line right before the question that uses picture N, where N is the number below. Never describe or redraw a picture, and never use a picture that does not fit the question):\n"
+     :"\n\nPICTURES FROM THE ATTACHED FILE (you may use them; write [[FIGURE: pic:N | Figure k: caption]] where N is the number below):\n";
+    text+=PDFPICS.map((p,i)=>`pic:${i+1} = ${p.ctx?(p.page?p.ctx:"next to the text: \""+p.ctx+"\""):"no caption"}`).join("\n")}}
   const fd=new FormData();fd.append("cmd",cmd);fd.append("text",text);fd.append("tags",tags.join(","));
   fd.append("history",JSON.stringify(hist.slice(-6)));
   if(lastDoc)fd.append("prev_doc",lastDoc.md);
@@ -1242,6 +1271,51 @@ async function aiAssist(o,tags){
 async function toPngBlob(p){const url=URL.createObjectURL(new Blob([b64bytes(p.b64)],{type:p.mime}));
  try{const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});const c=document.createElement("canvas");c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext("2d").drawImage(im,0,0);return await new Promise(ok=>c.toBlob(ok,"image/png"))}finally{URL.revokeObjectURL(url)}}
 const picName=(p,i)=>"picture_"+(i+1)+(p.caption?"_"+p.caption.replace(/[^A-Za-z0-9]+/g,"_").slice(0,30):"")+(p.mime==="image/png"?".png":".jpg");
+function parsePairs(t){
+ const out=[];for(const ln of String(t).split(/\n|;/)){const s=ln.trim().replace(/^replace\s+/i,"");if(!s)continue;
+  const m=s.match(/^(.+?)\s*(?:=>|->|→|\bwith\b|\bby\b)\s*(.*)$/i);if(!m)continue;
+  const q=x=>x.trim().replace(/^["'“‘]|["'”’]$/g,"");const a=q(m[1]),b=q(m[2]);if(a)out.push([a,b])}
+ return out}
+async function replaceInDocx(bytes,pairs){
+ const z=await JSZip.loadAsync(bytes),names=Object.keys(z.files).filter(n=>/^word\/(document|header\d*|footer\d*)\.xml$/.test(n));
+ const P=new DOMParser(),S=new XMLSerializer(),docs={};
+ for(const nm of names)docs[nm]=P.parseFromString(await z.file(nm).async("string"),"application/xml");
+ const run=(a,b,mode)=>{let count=0;
+  for(const nm of names)for(const p of qa(docs[nm],"p")){const ts=qa(p,"t");if(!ts.length)continue;
+   {let from=0;
+    for(;;){const txt=ts.map(t=>t.textContent).join(""),hay=mode?txt.toLowerCase():txt,nd=mode?a.toLowerCase():a;
+     const i=hay.indexOf(nd,from);if(i<0)break;const j=i+a.length;let s=0,first=true;
+     for(const t of ts){const v=t.textContent,e=s+v.length;
+      if(e>i&&s<j){const l=Math.max(i,s)-s,r=Math.min(j,e)-s;t.textContent=v.slice(0,l)+(first?b:"")+v.slice(r);t.setAttribute("xml:space","preserve");first=false}
+      s=e}
+     from=i+b.length;count++}}}
+  return count};
+ let count=0,ci=0;for(const[a,b]of pairs){let n=run(a,b,0);if(!n){n=run(a,b,1);ci+=n}count+=n}
+ for(const nm of names)z.file(nm,S.serializeToString(docs[nm]));
+ return{bytes:await z.generateAsync({type:"uint8array"}),count,ci}}
+async function doReplace(text,files){
+ const pairs=parsePairs(text);
+ if(!pairs.length){say("<p>Tell me the old word and the new word, for example <b>/replace Burton => Speke</b>. For many changes, put each on its own line.</p>");return}
+ const list="<ul class='steps'>"+pairs.map(([a,b])=>`<li>${esc(a)} → ${esc(b)}</li>`).join("")+"</ul>";
+ const dx=files.find(f=>/\.docx$/i.test(f.name));
+ const t=typing();
+ try{
+  if(dx){const r=await replaceInDocx(await dx.arrayBuffer(),pairs),name=dx.name.replace(/\.docx$/i,"")+"_changed.docx";
+   t.innerHTML=`<p>Changed <b>${r.count}</b> place${r.count===1?"":"s"} in your file.</p>${list}${fcard(name,size(r.bytes.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="view">Preview</button><button class="btn" data-a="docx">Download Word</button></div>`;
+   t.querySelector("[data-a=view]").onclick=()=>openPreview(name,r.bytes);t.querySelector("[data-a=docx]").onclick=()=>saveBytes(name,r.bytes,WORDMIME);registerDownload(name,r.bytes,t);return}
+  if(lastKind==="doc"&&lastDoc){let md=lastDoc.md,n=0;
+   for(const[a,b]of pairs){const parts=md.split(a);n+=parts.length-1;md=parts.join(b)}
+   if(!n){for(const[a,b]of pairs){const re=new RegExp(a.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi");md=md.replace(re,()=>{n++;return b})}}
+   if(!n){t.innerHTML=`<p>I did not find these words in the last document.</p>${list}`;return}
+   t.innerHTML=`<p>Changed <b>${n}</b> place${n===1?"":"s"}. Making the new file...</p>${list}`;
+   const t2=typing();await docResult({text:md,cmd:lastDoc.cmd},t2);return}
+  if(lastKind==="fmt"&&lastFmt){const r=await replaceInDocx(lastFmt.buf,pairs);
+   if(!r.count){t.innerHTML=`<p>I did not find these words in your file.</p>${list}`;return}
+   lastFmt.buf=r.bytes;buf=r.bytes;const res=await build({...lastFmt.o,hints:lastFmt.hints});
+   showFormatted(t,res,lastFmt.name.replace(/\.docx$/i,"")+"_formatted.docx",[`Changed ${r.count} place${r.count===1?"":"s"}`,...pairs.map(([a,b])=>a+" → "+b)],"Done. I changed the words.");return}
+  t.innerHTML="<p>Make a document or format a file first, or attach a Word file with <b>/replace old => new</b>.</p>"
+ }catch(e){t.innerHTML=`<p class="err">${esc(e.message)}</p>`}
+ down()}
 async function showPdfImages(files){
  for(const f of files){
   const t=typing();
@@ -1294,6 +1368,7 @@ async function send(){
  say((raw.trim()?`<p>${esc(raw.trim())}</p>`:"")+files.map(f=>fcard(f.name,size(f.size),(f.name.split(".").pop()||"file").slice(0,4).toUpperCase())).join(""),"u");
  if(cmd==="fix"){if(!lastFmt){say("<p>Format a Word file first, then tell me what to correct.</p>");return}return tellFormatter(text,tags)}
  if(cmd==="models")return showModels();
+ if(cmd==="replace")return doReplace(text,files);
  if(cmd==="images"){const pf=files.filter(f=>/\.pdf$/i.test(f.name));if(pf.length&&!text.trim()){if(!await ensureAI())return;return showPdfImages(pf)}return showImages(text)}
  if(cmd==="formatter"){
   const d=files.filter(f=>/\.docx$/i.test(f.name));

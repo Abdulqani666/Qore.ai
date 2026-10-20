@@ -209,7 +209,7 @@ def run():
     if g:
         return g
     cmd = request.form.get("cmd", "ask")
-    if cmd not in COMMANDS or COMMANDS[cmd]["kind"] in ("images", "models"):
+    if cmd not in COMMANDS or COMMANDS[cmd]["kind"] in ("images", "models", "local"):
         return jsonify(error="Unknown command."), 400
     if limited():
         return jsonify(error="Too many requests. Wait a little and try again."), 429
