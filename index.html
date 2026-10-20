@@ -13,6 +13,7 @@
 <title>Qore</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f6f5f2;--panel:#fff;--ink:#1c1c1a;--mute:#6b6a66;--line:#e3e1db;--accent:#1c1c1a;--accent-ink:#fff;--soft:#ecebe6;--bad:#b3261e;--bubble:#ebe9e3}
 @media (prefers-color-scheme:dark){:root{--bg:#1b1b19;--panel:#252523;--ink:#ecebe7;--mute:#9b9a94;--line:#3a3a37;--accent:#ecebe7;--accent-ink:#1b1b19;--soft:#2e2e2b;--bad:#f2928b;--bubble:#2e2e2b}}
@@ -310,6 +311,70 @@ header{position:relative}
  .bd .src,.fine,.note,.stp,.steps,.hi small{color:var(--mute)}
  .btn.pri,.send,.card:hover{color:#111}.btn.pri{background:#f7f7f8}.send{background:#f7f7f8}
  ::placeholder{color:#b9b9bf!important}}
+
+/* ===== round 3: professional polish ===== */
+:root{--brand:#0f6b5c;--brand2:#14a58c;--brand-soft:#e3f2ee;--shadow:0 1px 2px rgba(20,20,20,.05),0 8px 24px rgba(20,20,20,.07);--radius:22px}
+@media (prefers-color-scheme:dark){:root{--brand:#3ccfb2;--brand2:#2a9d8a;--brand-soft:#16312d;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35)}}
+body{font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:-.003em;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+/* header: brand mark + name */
+header{padding-top:calc(12px + env(safe-area-inset-top,0px));gap:8px}
+.logo{display:grid;width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font:700 15px/1 "Inter",system-ui,sans-serif;box-shadow:0 2px 6px rgba(15,107,92,.35)}
+header h1{font:650 18px/1 "Inter",system-ui,sans-serif;letter-spacing:-.02em;flex:none}
+header h1::after{content:"School documents";display:block;font:500 11px/1.2 "Inter",system-ui,sans-serif;color:var(--mute);letter-spacing:0;margin-top:3px}
+header .sp{flex:1}
+.ghost{border-color:transparent;border-radius:12px;padding:8px 10px;color:var(--mute);transition:background .15s,color .15s}
+.ghost:hover{background:var(--soft);color:var(--ink)}
+#hbtn{margin-right:2px}
+@media (max-width:480px){#inst .lbl,#files .lbl,#open .lbl,#thm .lbl{display:none}}
+/* greeting */
+.hero{max-width:640px;text-align:center}
+.hero h2{font:650 clamp(28px,7vw,40px)/1.15 "Inter",system-ui,sans-serif;letter-spacing:-.03em;margin:0 0 8px}
+.hero h2 em{font-style:normal;background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{display:block;color:var(--mute);font-size:15px;margin:0 auto 6px;max-width:460px}
+.hero .hl{display:none;margin:0 auto 14px;width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font:700 24px/1 "Inter",sans-serif;box-shadow:0 8px 22px rgba(15,107,92,.35)}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px;justify-content:stretch}
+@media (max-width:380px){.cards{grid-template-columns:1fr}}
+.card{display:grid;grid-template-columns:34px 1fr;grid-template-rows:auto auto;column-gap:11px;row-gap:1px;align-content:center;align-items:center;text-align:left;border-radius:16px;padding:12px;background:var(--panel);border:1px solid var(--line);flex:none;transition:transform .15s,box-shadow .15s,border-color .15s}
+.card .ci{grid-row:1/3;width:34px;height:34px;border-radius:10px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center}
+.card .ci svg{width:18px;height:18px}
+.card b{font-weight:600;font-size:14px;letter-spacing:-.01em;line-height:1.25;align-self:end}
+.card span{display:block;font-size:12px;color:var(--mute);margin-top:0;line-height:1.3;align-self:start}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--brand);background:var(--panel)}
+.card:active{transform:none}
+/* messages */
+.av{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-radius:9px;font-family:"Inter",sans-serif}
+.m.u .bd{background:var(--bubble);border-radius:18px 18px 6px 18px}
+.m.a .bd{font-size:16px;line-height:1.65}
+.bd .btn{border-radius:10px;font-size:13.5px;padding:8px 13px;transition:background .15s,border-color .15s}
+.bd .btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.bd .btn.pri:hover{filter:brightness(1.08)}
+.fc{border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.fc .badge{background:var(--brand-soft);color:var(--brand);font-weight:700}
+.err{border-left:3px solid var(--bad);padding:6px 0 6px 10px;background:transparent}
+/* composer */
+.comp{border-radius:var(--radius);border:1px solid var(--line);box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s}
+.comp:focus-within,.comp.on{border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 18%,transparent),var(--shadow)}
+.send{background:var(--brand);color:#fff;transition:transform .15s,filter .15s}
+.send:hover:not(:disabled){filter:brightness(1.1);transform:scale(1.05)}
+.plus{border-radius:50%}
+.pill{border-radius:999px;font-size:13.5px;transition:background .15s,border-color .15s}
+.pill:hover{background:var(--soft)}
+.pill[aria-pressed=true]{background:var(--brand-soft);border-color:var(--brand);color:var(--brand)}
+.fine{font-size:11.5px;color:var(--mute);text-align:center;margin:8px 0 0}
+/* sidebar */
+#hdrw .hi.on,#hdrw .hi:hover{background:var(--soft)}
+#hdrw #hnew{border-radius:12px;color:var(--ink)}
+@media (min-width:900px){#hdrw #hnew{background:var(--brand);color:#fff;font-weight:600;text-align:center;border-radius:12px;padding:10px}#hdrw #hnew:hover{filter:brightness(1.1)}}
+/* scroll button */
+#tobot{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow);display:grid;place-items:center;z-index:3;transition:opacity .2s}
+#tobot[hidden]{display:none!important}
+/* scrollbars, selection, motion */
+#thread{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+::selection{background:color-mix(in srgb,var(--brand) 28%,transparent)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media (prefers-color-scheme:dark){.logo,.hero .hl,.av{color:#06231e}.bd .btn.pri,.send{color:#06231e}.pill[aria-pressed=true]{color:var(--brand)}
+ .bd .btn.pri{background:var(--brand);color:#06231e}.send{background:var(--brand)}.card:hover{color:var(--ink)}#hdrw #hnew{color:#06231e}}
 </style>
 </head>
 <body>
@@ -325,6 +390,7 @@ header{position:relative}
  </header>
  <main id="thread" aria-live="polite"></main>
  <div class="dock">
+  <button id="tobot" aria-label="Scroll to the newest message" hidden><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
   <div class="pal" id="pal" hidden></div>
   <div class="tray" id="tray"></div>
   <div class="comp" id="comp">
@@ -459,17 +525,21 @@ const size=n=>n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/102
 const fcard=(name,sub,ext)=>`<div class="fc"><div class="badge">${ext}</div><div class="t"><b>${esc(name)}</b><span>${esc(sub)}</span></div></div>`;
 function mkHero(){
  const h=document.createElement("div");h.className="hero";
- h.innerHTML=`<div class="hl">Q</div><h2>How can I help you today?</h2><p>Write documents, exams and lessons with AI, or put your own Word file in the school design.</p><div class="cards">
- <button class="card" data-q="/build_document "><b>Build a document</b><span>Researches, thinks and writes from sources</span></button>
- <button class="card" data-q="/exam "><b>Make an exam</b><span>Parts, marks and writing lines</span></button>
- <button class="card" data-f="1"><b>Format my Word file</b><span>Your design. Claude checks the result</span></button>
- <button class="card" data-q="/lesson "><b>Lesson notes</b><span>Step by step with real examples</span></button>
- <button class="card" data-q="/answer_key "><b>Marking scheme</b><span>Attach an exam, get the answers</span></button>
- <button class="card" data-q="/images "><b>Find pictures</b><span>Free images with credit</span></button></div>`;
+ const hr=new Date().getHours(),gr=hr<5?"Good night":hr<12?"Good morning":hr<18?"Good afternoon":"Good evening";
+ h.innerHTML=`<div class="hl">Q</div><h2><em>${gr}.</em><br>How can I help you today?</h2><p>Write documents, exams and lessons with AI, or put your own Word file in the school design.</p><div class="cards">
+ <button class="card" data-q="/build_document "><i class="ci"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 13h6M9 17h6"/></svg></i><b>Build a document</b><span>Researches, thinks and writes from sources</span></button>
+ <button class="card" data-q="/exam "><i class="ci"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h4"/></svg></i><b>Make an exam</b><span>Parts, marks and writing lines</span></button>
+ <button class="card" data-f="1"><i class="ci"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h16"/><path d="M17 10l3 2-3 2z"/></svg></i><b>Format my Word file</b><span>Your design. Claude checks the result</span></button>
+ <button class="card" data-q="/lesson "><i class="ci"><svg viewBox="0 0 24 24"><path d="M4 5c3-1 5-1 8 1 3-2 5-2 8-1v13c-3-1-5-1-8 1-3-2-5-2-8-1z M12 6v13"/></svg></i><b>Lesson notes</b><span>Step by step with real examples</span></button>
+ <button class="card" data-q="/answer_key "><i class="ci"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></i><b>Marking scheme</b><span>Attach an exam, get the answers</span></button>
+ <button class="card" data-q="/images "><i class="ci"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M4 17l5-4 4 3 3-2 4 3"/></svg></i><b>Find pictures</b><span>Free images with credit</span></button></div>`;
  th.appendChild(h);
  h.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{ta.value=b.dataset.q;ta.focus();grow();palUpdate()});
  h.querySelector("[data-f]").onclick=()=>pick.click()}
 mkHero();
+{const tb=document.getElementById("tobot");const chk=()=>{tb.hidden=th.scrollHeight-th.scrollTop-th.clientHeight<160||!!th.querySelector(".hero")};
+ th.addEventListener("scroll",chk,{passive:true});new MutationObserver(chk).observe(th,{childList:true});
+ tb.onclick=()=>th.scrollTo({top:th.scrollHeight,behavior:"smooth"})}
 
 /* ---------- design choice ---------- */
 let mineStore=null;
