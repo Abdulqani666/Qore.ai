@@ -93,12 +93,16 @@ DOC_FORMAT = """OUTPUT FORMAT (strict). The app turns your text into a Word file
   @class: the class or grade, only for exams and worksheets
   @marks: total marks, only for exams and worksheets
 - Do NOT write the school name, logo, student name box, date or page numbers. The app adds them.
-- Headings: "## Heading" or "### Heading". Parts of an exam are one line that starts with the word PART, for example:
+- Headings: "## Heading" or "### Heading". Parts of an exam are one line that starts with the word for PART in the document's language (see LANGUAGE RULES), for example in English:
   PART A: MULTIPLE CHOICE (20 MARKS)
 - Questions are numbered "1." "2." and so on. Multiple choice options go one per line as "A. text", "B. text".
 - A blank to fill in is ________ (eight underscores). A writing line is a line that contains only underscores.
 - Tables use | pipes | with a header row.
-- Bold with **double asterisks**. No other styling, no HTML, no code fences, no images."""
+- Bold with **double asterisks**. No other styling, no HTML, no code fences, no images.
+LANGUAGE RULES (strict). Write every word of the document in the document's language. Never leave English words, English part names or English letters in an Arabic or Somali document.
+- English: "PART A: ... (4 MARKS)", options "A." "B." "C." "D.", table headers Word | Answer | Meaning.
+- Arabic: part lines start with القسم and an Arabic ordinal, for example "القسم الأول: اختر الإجابة الصحيحة (4 درجات)" (الأول، الثاني، الثالث، الرابع، الخامس، السادس). Marks are written "(3 درجات)" or "(درجة واحدة)". Options are one per line as "أ." "ب." "ج." "د.". Table headers in Arabic, for example الكلمة | الإجابة | المعنى. Write @title and @subtitle in Arabic. Question numbers stay 1. 2. 3.
+- Somali: part lines start with QAYBTA and a Somali ordinal, for example "QAYBTA KOWAAD: DOORO JAWAABTA SAXDA AH (4 DHIBCOOD)" (KOWAAD, LABAAD, SADDEXAAD, AFAR AAD, SHANAAD). Marks are written "(3 dhibcood)". Options are one per line as "a." "b." "c." "d.". Table headers in Somali, for example Erayga | Jawaabta | Macnaha. Write @title and @subtitle in Somali."""
 
 EXAM_RULES = """EXAM RULES
 - The marks of all parts must add up to exactly the total marks asked for. State the marks of each part in its PART line.
