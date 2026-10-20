@@ -128,8 +128,73 @@ def step(jid, msg):
         JOBS[jid]["steps"].append(msg)
 
 
-def work(jid, cmd, text, tags, history, prev_doc, ai_files):
+_NUM = re.compile(r"^\s*(?:\d{1,3}\s*[-.)]|[A-Da-d]\s*[.)]|[أبجد]\s*[.)])\s+")
+_PRE = re.compile(r"^(\s*(?:#{1,6}\s+|>\s*|\d{1,3}\s*[.)]\s+|[A-Da-dأبجد]\s*[.)]\s+|[-*•]\s+)?)(.*)$")
+_MARKS = re.compile(r"\s*\((\d+\s*(?:marks?|mark|درجات?|درجة|dhibc\w*)|درجة واحدة)\)\s*$", re.I)
+
+
+def _key(t):
+    return " ".join(re.sub(r"[^\w\s]", " ", t.replace("**", "").lower(), flags=re.U).split())
+
+
+def looks_like_exam(src_texts):
+    lines = [l for t in src_texts for l in t.splitlines()]
+    numbered = sum(1 for l in lines if _NUM.match(l))
+    return numbered >= 3 or sum(1 for l in lines if "?" in l or "؟" in l) >= 3
+
+
+def enforce_source(md, src_texts):
+    """Puts the teacher's exact words back: any output line that is a reworded copy of a source line is replaced by the source line."""
+    import difflib
+    src = []
+    for t in src_texts:
+        for l in t.splitlines()[1:] if t.startswith("[File") else t.splitlines():
+            body = _NUM.sub("", l.strip(), count=1).strip()
+            if len(body.split()) >= 4:
+                src.append(body)
+    if not src:
+        return md, 0, [], []
+    skeys = [_key(b) for b in src]
+    used, fixed, out, added = set(), 0, [], []
+    for line in md.split("\n"):
+        if not line.strip() or line.lstrip().startswith("@") or re.match(r"^\s*\[\[", line) or re.match(r"^\s*_{3,}\s*$", line) or line.strip().startswith("|"):
+            out.append(line)
+            continue
+        m = _PRE.match(line)
+        pre, body = m.group(1) or "", m.group(2)
+        mk = _MARKS.search(body)
+        tail = mk.group(0) if mk else ""
+        core = body[:len(body) - len(tail)] if mk else body
+        k = _key(core)
+        if len(k.split()) < 4:
+            out.append(line)
+            continue
+        if k in skeys:
+            used.add(skeys.index(k))
+            out.append(line)
+            continue
+        best, bi = 0.0, -1
+        for i, sk in enumerate(skeys):
+            if i in used:
+                continue
+            r = difflib.SequenceMatcher(None, k, sk).ratio()
+            if r > best:
+                best, bi = r, i
+        if bi >= 0 and best >= 0.8 and not ("____" in core and "____" not in src[bi]):
+            used.add(bi)
+            out.append(pre + src[bi] + tail)
+            fixed += 1
+        else:
+            out.append(line)
+            if re.match(r"^\s*\d{1,3}\s*[.)]\s", line):
+                added.append(core)
+    missing = [src[i] for i in range(len(src)) if i not in used][:8]
+    return "\n".join(out), fixed, missing, added
+
+
+def work(jid, cmd, text, tags, history, prev_doc, ai_files, src_texts=()):
     spec = COMMANDS[cmd]
+    exact = cmd in ("exam", "worksheet") and "free" not in tags and bool(src_texts) and ("exact" in tags or looks_like_exam(src_texts))
     try:
         forced = next((t for t in tags if t in ("claude", "gpt", "gemini")), None)
         tier = "deep" if "deep" in tags else ("fast" if "fast" in tags else None)
@@ -149,7 +214,7 @@ def work(jid, cmd, text, tags, history, prev_doc, ai_files):
         if cmd == "ask" and not ai_files and not tier and len(text) < 300 and "search" not in tags:
             tier, route, think, mx = "fast", [("gemini", "fast"), ("claude", "fast"), ("gpt", "fast")], False, 1500   # quick chat
         r = ai.run_with_fallback(
-            route, system_for(cmd), messages, files=ai_files,
+            route, system_for(cmd, exact=exact), messages, files=ai_files,
             thinking=think, max_tokens=mx,
             forced=forced, tier_override=tier, say=lambda m: step(jid, m))
         out = {"kind": spec["kind"], "cmd": cmd, "text": r["text"], "model": r["model"],
@@ -157,6 +222,15 @@ def work(jid, cmd, text, tags, history, prev_doc, ai_files):
                "sources": (sources + r["sources"])[:8]}
         if spec["kind"] == "json":
             out["data"] = ai.extract_json(r["text"])
+        if exact and out["text"]:
+            md, fixed, missing, added = enforce_source(out["text"], src_texts)
+            out["text"] = md
+            msg = "Your original wording was kept." + (f" {fixed} line{'s' if fixed != 1 else ''} the AI had changed {'were' if fixed != 1 else 'was'} put back exactly." if fixed else "")
+            if added:
+                msg += f" {len(added)} question{'s' if len(added) != 1 else ''} {'are' if len(added) != 1 else 'is'} new (not in your source): check {'them' if len(added) != 1 else 'it'}."
+            if missing:
+                msg += f" {len(missing)} line{'s' if len(missing) != 1 else ''} of your source {'are' if len(missing) != 1 else 'is'} not in the exam, for example: \"{missing[0][:70]}\"."
+            out["note"] = ((out["note"] or "") + " " + msg).strip()
         with LOCK:
             JOBS[jid].update(state="done", result=out)
     except ai.AIError as e:
@@ -235,7 +309,7 @@ def run():
     if not text.strip() and not ai_files:
         return jsonify(error="Write something or attach a file first."), 400
     jid = new_job()
-    threading.Thread(target=work, args=(jid, cmd, text, tags, history, prev_doc, ai_files), daemon=True).start()
+    threading.Thread(target=work, args=(jid, cmd, text, tags, history, prev_doc, ai_files, tuple(texts)), daemon=True).start()
     return jsonify(job=jid)
 
 

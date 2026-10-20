@@ -79,6 +79,8 @@ TAGS = {
     "search": "Search the web first.",
     "nosearch": "Do not search the web.",
     "noai": "Format without any AI.",
+    "exact": "Keep every word of the attached source exactly.",
+    "free": "Allow the AI to rewrite the attached source.",
 }
 
 BASE = """You are Qore, a writing assistant for a primary-school teacher in Puntland, Somalia.
@@ -140,6 +142,13 @@ Body:
 """
 
 
+VERBATIM_RULES = """VERBATIM MODE (strict, overrides every other rule). The attached file is the teacher's own exam or source. You are only putting it into the school layout.
+- Copy every question, option, instruction, number, name, date and word EXACTLY as written in the source, including its spelling, grammar, capital letters and punctuation. Do not correct, rephrase, translate, shorten, reorder, merge or remove anything.
+- Do not add new questions, new options, new parts or new instructions. Only add the markup this format needs (the @ settings, PART lines, numbering, blanks) and the marks the source already shows.
+- If the source has no answer lines or part titles, do not invent long text; keep the structure it has.
+- If something looks like a mistake, leave it unchanged. The teacher decides, not you.
+- Pictures of the source stay as they are; place them where the source has them."""
+
 HINTS_FORMAT = """Hints look like {"text": "first 40 characters of the paragraph, copied exactly", "action": "band|unband|title|untitle|number|unnumber", "why": "short reason"}.
 band = black heading bar, title = 14 pt bold title, number = real question number, un... = take it away."""
 
@@ -174,6 +183,7 @@ HOW TO USE IT
 - /lesson writes a textbook-style lesson like the school sample: school header with UNIT and topic, black section bars, bold key names and dates, pictures with "Figure 1:" captions found from free picture sites (with credit at the end), ACTIVITY and EXERCISE parts (questions, fill the blanks with a word box), footer "SUBJECT TEACHER: name" and page numbers. Example: /lesson Unit 2 History of Somalia, grade 8 Social Studies, the colonial period. The design comes from the Lessons template.
 - Copying pictures: /images with words finds free pictures with credit. /images with a PDF attached (and no words) pulls every picture out of the PDF with its "Figure N" caption, and each one has Copy and Save buttons plus Save all (zip). /lesson with a PDF attached can reuse the PDF pictures in the new lesson.
 - Exact pictures in exams: attach the source (a PDF or Word file with pictures) and send /exam. Qore finds the pictures in it and the AI puts them, unchanged, before the questions that need them, with the source caption. The same works for /lesson, /worksheet and /build_document.
+- Exact source (verbatim): when you attach an existing exam to /exam (or /worksheet), Qore keeps every word exactly as in your source. The AI is told not to change anything, then Qore checks each line and puts any reworded line back to your exact words (spelling mistakes included), and says how many lines it restored, which questions are new and which source lines are missing. Add #exact to force this, or #free to let the AI rewrite the source.
 - Replace words: /replace old => new changes a word in the last document Qore made or formatted (no AI, many changes allowed, one per line), or attach a Word file with /replace to get a changed copy. It matches exact capitals first, then any capitals.
 - Template connector (Word and LibreOffice): in the Design button, tap "Use my Word or LibreOffice template…" and pick a .docx, .dotx, .odt, .ott, .doc or .rtf file. Qore reads its font, text size, title size, margins, title line, footer text, page numbers, logo, black and white and page border, then saves it as "My saved design". After that, attach a file and send /formatter to use it. It copies the style only, not the content. Qore itself uses LibreOffice on the server to open .odt files and to make PDFs.
 - Theme button (top bar): switches Auto, Light and Dark. Search box in the chat history menu finds old chats.
@@ -186,10 +196,12 @@ RULES FOR ANSWERING
 - Accounts, AI keys and the database are set up by the school owner in Render; the teacher cannot change them in the app."""
 
 
-def system_for(cmd, language_hint=""):
+def system_for(cmd, language_hint="", exact=False):
     s = BASE
     if cmd in ("build_document", "lesson", "exam", "worksheet", "answer_key", "translate", "revise"):
         s += "\n\n" + DOC_FORMAT
+    if exact:
+        s += "\n\n" + VERBATIM_RULES
     if cmd == "exam":
         s += "\n\n" + EXAM_RULES + "\nWrite a complete exam paper from the teacher's request."
     elif cmd == "worksheet":
