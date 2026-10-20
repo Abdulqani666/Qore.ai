@@ -453,7 +453,10 @@ header .sp{flex:1}
    <button class="chip" data-p="exam" aria-pressed="true">School exam</button>
    <button class="chip" data-p="plain" aria-pressed="false">Plain document</button>
    <button class="chip" id="mine" aria-pressed="false">My saved design</button>
-  </div></div>
+  </div>
+  <button class="btn" id="tplb" type="button" style="margin-top:10px;width:100%">Use my Word or LibreOffice template…</button>
+  <input type="file" id="tplp" accept=".docx,.dotx,.dotm,.docm,.doc,.odt,.ott,.rtf" hidden>
+  <p class="note" style="margin:6px 0 0">Make your page once in Word or LibreOffice. Qore reads its font, sizes, margins, footer and logo, then uses them for every file.</p></div>
   <div class="sec"><h3>Text</h3>
    <div class="row">
     <div class="f"><label for="font">Font</label><select id="font"><option>Verdana</option><option>Arial</option><option>Times New Roman</option><option>Calibri</option><option>Georgia</option><option>Tahoma</option></select></div>
@@ -584,7 +587,83 @@ function mark(id){document.querySelectorAll(".chip").forEach(c=>c.setAttribute("
 document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{put(PRE[b.dataset.p]);mark(b.dataset.p)});
 $("mine").onclick=()=>{if(mineStore){put(mineStore);mark("mine")}else{say("<p>You have no saved design yet. Tap <b>Design</b>, set it up, then choose <b>Save as my design</b>.</p>")}};
 $("save").onclick=()=>{mineStore=get();try{localStorage.setItem("fmt-mine",JSON.stringify(mineStore))}catch(e){}mark("mine");close_();say("<p>Saved. Tap <b>My saved design</b> to use it again.</p>")};
-document.querySelectorAll("#sheet input,#sheet select").forEach(e=>e.addEventListener("change",()=>mark("")));
+document.querySelectorAll("#sheet input:not(#tplp),#sheet select").forEach(e=>e.addEventListener("change",()=>mark("")));
+
+/* ---------- learn a design from a Word / LibreOffice template ---------- */
+async function readTemplate(file){
+ let buf;const ext=(file.name.match(/\.[^.]+$/)||[""])[0].toLowerCase();
+ if(ext===".docx"||ext===".dotx"||ext===".dotm"||ext===".docm")buf=await file.arrayBuffer();
+ else{const fd=new FormData();fd.append("file",file);const r=await fetch("/api/convert",{method:"POST",headers:access?{"X-Access":access}:{},body:fd});
+  if(!r.ok){let m="I could not open this file.";try{m=(await r.json()).error||m}catch(e){}throw new Error(m)}buf=await r.arrayBuffer()}
+ const z=await JSZip.loadAsync(buf);const rd=async p=>{const f=z.file(p);return f?await f.async("string"):""};
+ const docx=await rd("word/document.xml");if(!docx)throw new Error("This file has no Word pages in it.");
+ const sty=await rd("word/styles.xml"),P=new DOMParser(),W=x=>P.parseFromString(x||"<a/>","application/xml");
+ const got={},o={};
+ // fonts and sizes
+ const sd=W(sty),dd=sd.getElementsByTagName("w:docDefaults")[0];
+ const fontOf=n=>{if(!n)return"";const f=n.getElementsByTagName("w:rFonts")[0];return f?(f.getAttribute("w:ascii")||f.getAttribute("w:hAnsi")||""):""};
+ const szOf=n=>{if(!n)return 0;const e=n.getElementsByTagName("w:sz")[0];return e?(+e.getAttribute("w:val"))/2:0};
+ const styleById=id=>[...sd.getElementsByTagName("w:style")].find(x=>x.getAttribute("w:styleId")===id);
+ const dm=W(docx),runs=[...dm.getElementsByTagName("w:r")];
+ const cnt={};runs.forEach(r=>{const p=r.getElementsByTagName("w:rPr")[0],f=fontOf(p);if(f&&r.textContent.trim())cnt[f]=(cnt[f]||0)+r.textContent.length});
+ let font=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];font=font?font[0]:(fontOf(dd)||fontOf(styleById("Normal")));
+ let size=szOf(styleById("Normal"))||szOf(dd);
+ const rs={};runs.forEach(r=>{const z=szOf(r.getElementsByTagName("w:rPr")[0]);if(z&&r.textContent.trim())rs[z]=(rs[z]||0)+r.textContent.length});
+ const top=Object.entries(rs).sort((a,b)=>b[1]-a[1])[0];if(top)size=+top[0];
+ const usedSt=new Set([...dm.getElementsByTagName("w:pStyle")].map(e=>e.getAttribute("w:val")));let hs=Math.max(0,...["Title","Heading1","Heading2"].filter(n=>usedSt.has(n)).map(n=>szOf(styleById(n))));
+ const big=Object.keys(rs).map(Number).filter(v=>v>size&&v<=30);if(big.length)hs=Math.max(hs,Math.max(...big));
+ if(font){o.font=font;got.font=font}
+ if(size){o.size=size;got.size=size}
+ if(hs&&hs>=size){o.hs=hs;got.hs=hs}
+ // margins
+ const pm=[...dm.getElementsByTagName("w:pgMar")].pop();
+ if(pm){const mm=a=>Math.round((+pm.getAttribute("w:"+a)||0)/56.7);const t=mm("top"),l=mm("left");if(t>=5&&t<=50){o.mt=t;got.mt=t}if(l>=5&&l<=50){o.ml=l;got.ml=l}}
+ // page border and table lines
+ o.border=!!dm.getElementsByTagName("w:pgBorders")[0];o.tbl=!!dm.getElementsByTagName("w:tblBorders")[0]||!!dm.getElementsByTagName("w:tbl")[0];
+ // colours
+ const cols=[...dm.getElementsByTagName("w:color")].map(c=>(c.getAttribute("w:val")||"").toLowerCase()).filter(v=>v&&!["000000","auto","ffffff"].includes(v));
+ o.bw=cols.length===0;
+ // footer: text and page numbers
+ let ftxt="",pn="none",pos="right",fline=false;
+ for(const n of Object.keys(z.files).filter(n=>/^word\/footer\d*\.xml$/.test(n))){const x=await rd(n);if(!/w:t[ >]|PAGE/.test(x))continue;const fd=W(x);
+  const instr=[...fd.getElementsByTagName("w:instrText")].map(e=>e.textContent).join(" ")+(x.includes("w:fldSimple")?x:"");
+  const txt=[...fd.getElementsByTagName("w:t")].map(e=>e.textContent).join("").trim();
+  if(/PAGE/.test(instr)){pn=/NUMPAGES/.test(instr)?"xofy":/\bpage\b/i.test(txt)?"x":"n"}
+  const jc=fd.getElementsByTagName("w:jc")[0];if(jc)pos=/center/.test(jc.getAttribute("w:val"))?"center":"right";
+  ftxt=txt.replace(/\bpage\b|\bof\b|\d+/gi,"").replace(/\s+/g," ").replace(/^[\s\-–—|:,.·]+|[\s\-–—|:,.·]+$/g,"");fline=/w:pBdr/.test(x);break}
+ o.ft=ftxt;o.pn=pn;o.pos=pos;o.fline=fline;if(ftxt)got.ft=ftxt;if(pn!=="none")got.pn=pn;
+ // logo: first picture in a header or at the top of the page
+ let logoUrl=null;
+ const srcs=[["word/document.xml","word/_rels/document.xml.rels"],...Object.keys(z.files).filter(n=>/^word\/header\d*\.xml$/.test(n)).map(n=>[n,n.replace("word/","word/_rels/")+".rels"])];
+ for(const [part,rels] of srcs.reverse()){const x=await rd(part);const m=x.match(/r:embed="([^"]+)"/);if(!m)continue;
+  const rl=await rd(rels);const t=(rl.match(new RegExp('Id="'+m[1]+'"[^>]*Target="([^"]+)"'))||rl.match(new RegExp('Target="([^"]+)"[^>]*Id="'+m[1]+'"'))||[])[1];
+  if(!t||!/\.(png|jpe?g)$/i.test(t))continue;const f=z.file("word/"+t.replace(/^\/?(word\/)?/,""));if(!f)continue;
+  const b64=await f.async("base64");logoUrl="data:image/"+(/png$/i.test(t)?"png":"jpeg")+";base64,"+b64;break}
+ // title lines at the top: first short centred lines
+ const paras=[...dm.getElementsByTagName("w:p")].filter(p=>p.textContent.trim()).slice(0,3);
+ const ctr=p=>{const j=p.getElementsByTagName("w:jc")[0];return j&&j.getAttribute("w:val")==="center"};
+ if(paras.length&&ctr(paras[0])&&paras[0].textContent.trim().length<70){o.tb=true;o.t1=paras[0].textContent.trim();got.t1=o.t1;
+  o.t2=paras[1]&&ctr(paras[1])&&paras[1].textContent.trim().length<70?paras[1].textContent.trim():"";if(o.t2)got.t2=o.t2}
+ return {o,got,logoUrl}}
+function sayTpl(name,r){
+ const g=r.got,L=[];
+ if(g.font)L.push(`Font <b>${esc(g.font)}</b>${g.size?" "+g.size+" pt":""}`);
+ if(g.hs)L.push(`Titles <b>${g.hs} pt</b>`);
+ if(g.mt||g.ml)L.push(`Margins <b>${g.mt||"?"} mm</b> top and bottom, <b>${g.ml||"?"} mm</b> left and right`);
+ if(g.t1)L.push(`Title line <b>${esc(g.t1)}</b>`);
+ if(g.pn||g.ft)L.push(`Footer${g.ft?" <b>"+esc(g.ft)+"</b>":""}${g.pn?" with page numbers":""}`);
+ L.push(r.o.bw?"Black and white":"Colours kept");
+ if(r.logoUrl)L.push("Logo found and added");
+ say(`<p>I read <b>${esc(name)}</b> and learned your design:</p><ul>${L.map(x=>"<li>"+x+"</li>").join("")}</ul><p>It is saved as <b>My saved design</b> and ready to use. Attach a file and send <b>/formatter</b>.</p>`)}
+$("tplb").onclick=()=>$("tplp").click();
+$("tplp").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;close_();const bd=typing();
+ try{const r=await readTemplate(f);
+  if(r.o.font&&![...$("font").options].some(x=>x.value===r.o.font)){const op=document.createElement("option");op.textContent=r.o.font;$("font").appendChild(op)}
+  put(r.o);if(r.logoUrl){await setLogo(r.logoUrl);$("lg").checked=true;try{localStorage.setItem("fmt-logo",r.logoUrl)}catch(x){}}
+  mineStore=get();try{localStorage.setItem("fmt-mine",JSON.stringify(mineStore))}catch(x){}mark("mine");
+  bd.closest(".m").remove();sayTpl(f.name,r)}
+ catch(x){bd.innerHTML=`<p class="err">${esc(x.message||"I could not read this template.")}</p>`}};
+
 
 /* ---------- sheet ---------- */
 let lastFocus=null;

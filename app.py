@@ -347,6 +347,40 @@ def pdf_start():
     return jsonify(job=jid)
 
 
+@app.post("/api/convert")
+def convert_to_docx():
+    """Turns a LibreOffice/old Word file (odt, ott, doc, rtf) into .docx so Qore can read the template."""
+    g = guard()
+    if g:
+        return g
+    if not soffice_ok():
+        return jsonify(error="LibreOffice is not installed on this server."), 501
+    if limited():
+        return jsonify(error="Too many requests. Wait a little and try again."), 429
+    f = request.files.get("file")
+    if not f:
+        return jsonify(error="No file."), 400
+    ext = os.path.splitext(f.filename or "")[1].lower()
+    if ext not in (".odt", ".ott", ".doc", ".dot", ".rtf", ".dotx", ".dotm", ".docm"):
+        return jsonify(error="Use a Word or LibreOffice file."), 400
+    d = tempfile.mkdtemp(prefix="qconv")
+    try:
+        src = os.path.join(d, "in" + ext)
+        f.save(src)
+        exe = shutil.which("soffice") or shutil.which("libreoffice")
+        with CONV:
+            subprocess.run([exe, "--headless", "--norestore", "-env:UserInstallation=file:///tmp/lo_profile",
+                            "--convert-to", "docx:MS Word 2007 XML", "--outdir", d, src], timeout=120, capture_output=True)
+        out = os.path.join(d, "in.docx")
+        if not os.path.exists(out):
+            return jsonify(error="I could not open this file."), 422
+        with open(out, "rb") as fh:
+            data = fh.read()
+        return Response(data, mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
 @app.get("/api/pdf/<pid>")
 def pdf_get(pid):
     g = guard()
