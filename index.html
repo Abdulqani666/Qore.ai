@@ -1415,8 +1415,10 @@ function infoXml(o,tw){
  const rp=b=>`<w:rPr>${rfx(f)}${b?"<w:b/><w:bCs/>":""}${AR?"<w:rtl/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
  const cell=(label,val)=>`<w:tc><w:tcPr><w:tcW w:w="${h}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr>${AR?"<w:bidi/>":""}<w:spacing w:before="110" w:after="110"/></w:pPr><w:r>${rp(1)}<w:t xml:space="preserve">${esc(label)} </w:t></w:r><w:r>${rp(/_{3}/.test(val)?0:1)}<w:t xml:space="preserve">${esc(val)}</w:t></w:r></w:p></w:tc>`;
  const u=n=>"_".repeat(n);
+ const ORD=["","الأول","الثاني","الثالث","الرابع","الخامس","السادس","السابع","الثامن","التاسع","العاشر","الحادي عشر","الثاني عشر"];
+ const icA=(()=>{const m=String(o.ic||"").match(/\d{1,2}/);return m&&ORD[+m[0]]?ORD[+m[0]]:(o.ic||"")})();
  const dte=AR?u(14):`______ / ${mo} / ${yr}`;
- const rows=AR?[[[L.name,u(26)],[L.subj,o.isub||u(14)]],[[L.cls,o.ic||u(8)],[L.time,o.itime||u(14)]],[[L.date,dte],[L.marks,o.im||u(8)]]]
+ const rows=AR?[[[L.name,u(18)],[L.subj,o.isub||u(14)]],[[L.cls,icA||u(8)],[L.time,o.itime||u(14)]],[[L.date,dte],[L.marks,o.im||u(8)]]]
   :o.lang==="so"?[[[L.cls,o.ic||u(8)],[L.marks,o.im||u(8)]],[[L.name,u(20)],[L.roll,u(18)]],[[L.date,u(14)],[L.teach,o.it||u(24)]]]
   :[[[L.cls,o.ic||u(8)],[L.term,u(14)]],[[L.time,o.itime||u(14)],[L.marks,o.im||u(8)]],[[L.name,u(26)],[L.roll,u(18)]],[[L.date,dte],[L.teach,o.it||u(24)]]];
  const tbl=`<w:tbl><w:tblPr>${AR?"<w:bidiVisual/>":""}<w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${bd}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="${h}"/><w:gridCol w:w="${tw-h}"/></w:tblGrid>${rows.map(r=>`<w:tr>${cell(...r[0])}${cell(...r[1])}</w:tr>`).join("")}</w:tbl>`;
@@ -1730,10 +1732,10 @@ async function build(o){
  }
  const first8=paras.filter(p=>p.isConnected&&text(p).trim()).slice(0,25).map(text).join("\n");
  if(o.tb&&o.ib){
-  const TITLEISH=/school|primary|secondary|examination|\bexam\b|\btest\b|assessment|imtixaan|abubakar|مدرسة|اختبار|الاختبار|امتحان/i,SUBJ0=/^\s*([A-Za-z][A-Za-z ]{1,40}?)\s+(examination|exam|test)\b/i;
+  const TITLEISH=/school|primary|secondary|examination|\bexam\b|\btest\b|assessment|imtixaan|abubakar|مدرسة|اختبار|الاختبار|امتحان|إمتحان|الامتحان|الإمتحان/i,SUBJ0=/^\s*([A-Za-z][A-Za-z ]{1,40}?)\s+(examination|exam|test)\b/i;
   let n=0;
   for(const p of paras.filter(p=>p.isConnected&&!inTable(p)&&text(p).trim()).slice(0,3)){
-   const t=text(p).trim();if(t.length>80||!TITLEISH.test(t)||(bandP(p)&&o.bands)||/\?/.test(t)||/^\d/.test(t))break;
+   const t=text(p).trim(),tn=t.replace(/[\u064B-\u0652\u0640]/g,"");if(t.length>80||!(TITLEISH.test(tn)||(o.lang!=="en"&&n>0&&t.length<60&&!/[.:؟?]/.test(t)))||(bandP(p)&&o.bands)||/\?/.test(t)||/^\d/.test(t))break;
    const sm=t.match(SUBJ0);if(sm&&!o.t2)o.t2=(sm[1]+" "+sm[2]).toUpperCase();
    const gm=t.match(/\b(grade|class)\s*(\d{1,2})\b/i);if(gm&&!o.ic)o.ic=gm[2];
    (o._rem=o._rem||[]).push(t);p.remove();n++}
@@ -1741,7 +1743,7 @@ async function build(o){
    const rest=o._rem.filter(x=>!/school|primary|مدرسة|abubakar/i.test(x));
    if(rest[0]&&!o.t2)o.t2=rest[0];
    if(rest[1])o.t3=rest[1];
-   if(o.lang==="ar"){const sj=(rest[0]||"").match(/^اختبار\s+(.+)$/);if(sj&&!o.isub)o.isub=sj[1].trim();
+   if(o.lang==="ar"){const r0=rest[0]||"";if(/^(اختبار|امتحان|إمتحان)\s/.test(r0.replace(/[\u064B-\u0652\u0640]/g,""))&&!o.isub)o.isub=r0.replace(/^\S+\s+/,"").trim();
     const cm=(rest[1]||"").match(/الصف\s+(\S+)/);if(cm&&!o.ic)o.ic=cm[1]}
    o._rem=null}
   if(n)log.push(["Title lines",`${n} old title line${n>1?"s":""} replaced by the school header`])}
