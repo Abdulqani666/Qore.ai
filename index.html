@@ -669,7 +669,7 @@ function sayTpl(name,r,slot){
 /* ---------- four saved templates ---------- */
 const TP={tp_ar:"Arabic exams",tp_so:"Somali exams",tp_ex:"Other subjects exams",tp_ls:"Lessons"};
 const SEED={
- tp_ar:{...PRE.exam,lang:"ar",font:"Arial",caps:"none",num:"none",gi:false,t1:"مدرسة أبوبكر الصديق الابتدائية والإعدادية",t2:"",t3:"الاختبار الشهري",ft:"",pn:"x",pos:"center",wm:true},
+ tp_ar:{...PRE.exam,lang:"ar",font:"Tahoma",caps:"none",num:"none",gi:false,t1:"مدرسة أبوبكر الصديق الابتدائية والإعدادية",t2:"",t3:"الاختبار الشهري",ft:"",pn:"x",pos:"center",wm:true},
  tp_so:{...PRE.exam,lang:"so",t3:"IMTIXAAN BILEED",ft:"DALLADA IMTIXAANAADKA",pn:"x",pos:"right"},
  tp_ex:{...PRE.exam},
  tp_ls:{...PRE.plain,font:"Verdana",size:12,hs:14,bw:true,caps:"headings",num:"none",tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",lg:true,wm:true,mt:15,ml:18,border:true,ft:"LESSON NOTES",pn:"x",pos:"right",fline:true,rm:true}};
@@ -1397,7 +1397,7 @@ function titleXml(o,tw,use){
  const f=esc(o.font),LW=use?1500:0;
  const none=["top","left","bottom","right","insideH","insideV"].map(e=>`<w:${e} w:val="nil"/>`).join("");
  const RT=o.lang==="ar";
- const line=(t,sz)=>t?`<w:p><w:pPr>${RT?"<w:bidi/>":""}<w:spacing w:before="0" w:after="40"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr>${rfx(f)}<w:b/><w:bCs/>${RT?"<w:rtl/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${esc(t)}</w:t></w:r></w:p>`:"";
+ const line=(t,sz)=>t?`<w:p><w:pPr>${RT?"<w:bidi/>":""}<w:spacing w:before="0" w:after="40"/>${RT?"":"<w:jc w:val=\"center\"/>"}</w:pPr><w:r><w:rPr>${rfx(f)}<w:b/><w:bCs/>${RT?"<w:rtl/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${esc(t)}</w:t></w:r></w:p>`:"";
  let c1="";
  if(use){
   const cx=720000,cy=Math.round(cx*logo.h/logo.w);
