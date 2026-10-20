@@ -408,6 +408,8 @@ header .sp{flex:1}
 #hdrw #hout:hover{background:var(--soft);color:var(--ink)}
 @media (prefers-color-scheme:dark){#hdrw .logo2,#hdrw #hnew{color:#06231e}}
 #hdrw .hf:has(#hout[hidden]){display:none}
+.chip.saved::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand);margin-left:7px;vertical-align:middle}
+#tps{flex-wrap:wrap;overflow:visible}
 </style>
 </head>
 <body>
@@ -452,11 +454,19 @@ header .sp{flex:1}
   <div class="sec"><h3>Start from</h3><div class="chips" id="chips" role="group" aria-label="Design">
    <button class="chip" data-p="exam" aria-pressed="true">School exam</button>
    <button class="chip" data-p="plain" aria-pressed="false">Plain document</button>
-   <button class="chip" id="mine" aria-pressed="false">My saved design</button>
+   <button class="chip" id="mine" aria-pressed="false" hidden>My saved design</button>
+  </div></div>
+  <div class="sec" id="tpsec"><h3>My templates</h3>
+   <div class="chips" id="tps" role="group" aria-label="My templates">
+    <button class="chip" id="tp_ar" aria-pressed="false">Arabic exams</button>
+    <button class="chip" id="tp_so" aria-pressed="false">Somali exams</button>
+    <button class="chip" id="tp_ex" aria-pressed="false">Other subjects exams</button>
+    <button class="chip" id="tp_ls" aria-pressed="false">Lessons</button>
+   </div>
+   <p class="note" id="tpnote" style="margin:8px 0">Tap a template to use it. Change the design below, then save it here.</p>
+   <div class="row"><button class="btn pri" id="tpsave" type="button">Save design to this template</button><button class="btn" id="tplb" type="button">Read it from a Word or LibreOffice file…</button></div>
+   <input type="file" id="tplp" accept=".docx,.dotx,.dotm,.docm,.doc,.odt,.ott,.rtf" hidden>
   </div>
-  <button class="btn" id="tplb" type="button" style="margin-top:10px;width:100%">Use my Word or LibreOffice template…</button>
-  <input type="file" id="tplp" accept=".docx,.dotx,.dotm,.docm,.doc,.odt,.ott,.rtf" hidden>
-  <p class="note" style="margin:6px 0 0">Make your page once in Word or LibreOffice. Qore reads its font, sizes, margins, footer and logo, then uses them for every file.</p></div>
   <div class="sec"><h3>Text</h3>
    <div class="row">
     <div class="f"><label for="font">Font</label><select id="font"><option>Verdana</option><option>Arial</option><option>Times New Roman</option><option>Calibri</option><option>Georgia</option><option>Tahoma</option></select></div>
@@ -474,6 +484,7 @@ header .sp{flex:1}
    <label class="chk"><input type="checkbox" id="tbl"> Black lines on tables</label>
   </div>
   <div class="sec"><h3>Title block</h3>
+   <div class="f"><label for="lang">Language of the paper</label><select id="lang"><option value="en">English</option><option value="so">Somali</option><option value="ar">Arabic (right to left)</option></select></div>
    <label class="chk"><input type="checkbox" id="tb"> Add title block at the top</label>
    <div class="f"><label for="t1">Line 1 (school name)</label><input type="text" id="t1"></div>
    <div class="f"><label for="t2">Line 2 (subject or exam)</label><input type="text" id="t2"></div>
@@ -490,6 +501,7 @@ header .sp{flex:1}
     <div class="f"><label for="ic">Class</label><input type="text" id="ic" placeholder="e.g. 6"></div>
     <div class="f"><label for="im">Total marks</label><input type="text" id="im" placeholder="e.g. 10"></div>
    </div>
+   <div class="f"><label for="isub">Subject (used in the Arabic box)</label><input type="text" id="isub" placeholder="e.g. العربية"></div>
    <div class="f"><label for="it">Teacher (leave empty for a blank line)</label><input type="text" id="it"></div>
    <label class="chk"><input type="checkbox" id="i4"> Also add Term and Time Allowed (4 rows)</label>
   </div>
@@ -514,7 +526,7 @@ header .sp{flex:1}
    <p class="note">If the footer text is empty and page numbers are off, the existing footer is kept.</p>
   </div>
  </div>
- <div class="sh-f"><button class="btn" id="save">Save as my design</button><button class="btn pri" id="apply">Done</button></div>
+ <div class="sh-f"><button class="btn" id="save">Save to template</button><button class="btn pri" id="apply">Done</button></div>
 </div>
 <div id="fl" role="dialog" aria-modal="true" aria-label="My files" aria-hidden="true">
  <div class="sh-h"><h2>My files</h2><button class="ghost" id="flx">Done</button></div>
@@ -546,12 +558,12 @@ header .sp{flex:1}
 const W="http://schemas.openxmlformats.org/wordprocessingml/2006/main",R="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const NS=`xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"`;
 const $=id=>document.getElementById(id);
-const IDS=["rm","wm","i4","gi","gitext","font","size","hs","force","bw","tight","caps","num","bands","tbl","tb","t1","t2","t3","lg","ib","ic","im","it","mt","ml","border","ft","pn","pos","fline"];
+const IDS=["rm","wm","i4","gi","gitext","font","size","hs","force","bw","tight","caps","num","bands","tbl","tb","t1","t2","t3","lg","ib","ic","im","it","mt","ml","border","ft","pn","pos","fline","lang","isub"];
 const PRE={
 exam:{rm:true,font:"Verdana",size:12,hs:14,force:true,bw:true,tight:true,caps:"headings",num:"auto",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",t2:"",t3:"",lg:true,wm:true,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:true,ic:"",im:"",it:"",mt:15,ml:18,border:true,ft:"EXAMINATION BOARD",pn:"x",pos:"right",fline:true},
 plain:{rm:false,font:"Times New Roman",size:12,hs:14,force:false,bw:false,tight:false,caps:"none",num:"none",bands:false,tbl:false,tb:false,t1:"",t2:"",t3:"",lg:false,wm:false,i4:false,gi:false,gitext:"Read each question slowly.\nAnswer ALL questions.\nUse a pen. Write clearly.\nMarks are shown at the end of each question.",ib:false,ic:"",im:"",it:"",mt:25,ml:25,border:false,ft:"",pn:"n",pos:"center",fline:false}};
 const get=()=>Object.fromEntries(IDS.map(i=>[i,$(i).type==="checkbox"?$(i).checked:$(i).value]));
-const put=o=>IDS.forEach(i=>{if(!(i in o))return;$(i).type==="checkbox"?$(i).checked=!!o[i]:$(i).value=o[i]});
+const put=o=>{if(!("lang" in o))$("lang").value="en";if(!("isub" in o))$("isub").value="";IDS.forEach(i=>{if(!(i in o))return;$(i).type==="checkbox"?$(i).checked=!!o[i]:$(i).value=o[i]})};
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 put(PRE.exam);
 
@@ -585,8 +597,7 @@ let mineStore=null;
 try{mineStore=JSON.parse(localStorage.getItem("fmt-mine")||"null")}catch(e){}
 function mark(id){document.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",String((c.dataset.p||c.id)===id)))}
 document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{put(PRE[b.dataset.p]);mark(b.dataset.p)});
-$("mine").onclick=()=>{if(mineStore){put(mineStore);mark("mine")}else{say("<p>You have no saved design yet. Tap <b>Design</b>, set it up, then choose <b>Save as my design</b>.</p>")}};
-$("save").onclick=()=>{mineStore=get();try{localStorage.setItem("fmt-mine",JSON.stringify(mineStore))}catch(e){}mark("mine");close_();say("<p>Saved. Tap <b>My saved design</b> to use it again.</p>")};
+$("mine").onclick=()=>{};$("save").onclick=()=>$("tpsave").click();
 document.querySelectorAll("#sheet input:not(#tplp),#sheet select").forEach(e=>e.addEventListener("change",()=>mark("")));
 
 /* ---------- learn a design from a Word / LibreOffice template ---------- */
@@ -645,7 +656,7 @@ async function readTemplate(file){
  if(paras.length&&ctr(paras[0])&&paras[0].textContent.trim().length<70){o.tb=true;o.t1=paras[0].textContent.trim();got.t1=o.t1;
   o.t2=paras[1]&&ctr(paras[1])&&paras[1].textContent.trim().length<70?paras[1].textContent.trim():"";if(o.t2)got.t2=o.t2}
  return {o,got,logoUrl}}
-function sayTpl(name,r){
+function sayTpl(name,r,slot){
  const g=r.got,L=[];
  if(g.font)L.push(`Font <b>${esc(g.font)}</b>${g.size?" "+g.size+" pt":""}`);
  if(g.hs)L.push(`Titles <b>${g.hs} pt</b>`);
@@ -654,15 +665,39 @@ function sayTpl(name,r){
  if(g.pn||g.ft)L.push(`Footer${g.ft?" <b>"+esc(g.ft)+"</b>":""}${g.pn?" with page numbers":""}`);
  L.push(r.o.bw?"Black and white":"Colours kept");
  if(r.logoUrl)L.push("Logo found and added");
- say(`<p>I read <b>${esc(name)}</b> and learned your design:</p><ul>${L.map(x=>"<li>"+x+"</li>").join("")}</ul><p>It is saved as <b>My saved design</b> and ready to use. Attach a file and send <b>/formatter</b>.</p>`)}
-$("tplb").onclick=()=>$("tplp").click();
-$("tplp").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;close_();const bd=typing();
+ say(`<p>I read <b>${esc(name)}</b> and learned your design:</p><ul>${L.map(x=>"<li>"+x+"</li>").join("")}</ul><p>It is saved as <b>${esc(slot||'My saved design')}</b> and ready to use. Attach a file and send <b>/formatter</b>.</p>`)}
+/* ---------- four saved templates ---------- */
+const TP={tp_ar:"Arabic exams",tp_so:"Somali exams",tp_ex:"Other subjects exams",tp_ls:"Lessons"};
+const SEED={
+ tp_ar:{...PRE.exam,lang:"ar",font:"Arial",caps:"none",num:"none",gi:false,t1:"مدرسة أبوبكر الصديق الابتدائية والإعدادية",t2:"",t3:"الاختبار الشهري",ft:"",pn:"x",pos:"center",wm:true},
+ tp_so:{...PRE.exam,lang:"so",t3:"IMTIXAAN BILEED",ft:"DALLADA IMTIXAANAADKA",pn:"x",pos:"right"},
+ tp_ex:{...PRE.exam},
+ tp_ls:{...PRE.plain,font:"Verdana",size:12,hs:14,bw:true,caps:"headings",num:"none",tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",lg:true,wm:true,mt:15,ml:18,border:true,ft:"LESSON NOTES",pn:"x",pos:"right",fline:true,rm:true}};
+let TPS={};try{TPS=JSON.parse(localStorage.getItem("fmt-tpls")||"{}")}catch(e){}
+if(!TPS.tp_ex&&mineStore){TPS.tp_ex={o:mineStore,logo:null}}
+let ACT="";
+const tpStore=()=>{try{localStorage.setItem("fmt-tpls",JSON.stringify(TPS))}catch(e){say('<p class="err">I could not save on this phone. The browser storage is full or blocked.</p>')}};
+const tpLogo=()=>{const u=$("lgimg").src;return /^data:image/.test(u)?u:null};
+function tpMark(){document.querySelectorAll("#tps .chip").forEach(c=>{c.classList.toggle("saved",!!TPS[c.id])});
+ $("tpnote").textContent=ACT?(TPS[ACT]?`"${TP[ACT]}" is your saved template. Change the design below, then tap Save to keep the changes.`:`"${TP[ACT]}" is a ready starter. Change anything, then tap Save to keep it as yours.`):"Tap a template to use it. Change the design below, then save it here."}
+async function tpUse(id){
+ const t=TPS[id]||{o:SEED[id],logo:null};ACT=id;
+ if(t.o.font&&![...$("font").options].some(x=>x.value===t.o.font)){const op=document.createElement("option");op.textContent=t.o.font;$("font").appendChild(op)}
+ put(t.o);if(t.logo){await setLogo(t.logo);try{localStorage.setItem("fmt-logo",t.logo)}catch(e){}}
+ mark(id);tpMark()}
+document.querySelectorAll("#tps .chip").forEach(c=>c.onclick=()=>tpUse(c.id));
+$("tpsave").onclick=()=>{if(!ACT){say("<p>First tap one of the four templates (Arabic exams, Somali exams, Other subjects exams or Lessons), then save.</p>");return}
+ TPS[ACT]={o:get(),logo:tpLogo()};tpStore();mark(ACT);tpMark();close_();say(`<p>Saved as <b>${esc(TP[ACT])}</b>. Open <b>Design</b> and tap it any time to use it.</p>`)};
+$("tplb").onclick=()=>{if(!ACT){say("<p>First tap one of the four templates in the Design window, then choose the file.</p>");return}$("tplp").click()};
+$("tplp").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const id=ACT;close_();const bd=typing();
  try{const r=await readTemplate(f);
+  const keep=get();r.o.lang=keep.lang;r.o.isub=keep.isub;
   if(r.o.font&&![...$("font").options].some(x=>x.value===r.o.font)){const op=document.createElement("option");op.textContent=r.o.font;$("font").appendChild(op)}
-  put(r.o);if(r.logoUrl){await setLogo(r.logoUrl);$("lg").checked=true;try{localStorage.setItem("fmt-logo",r.logoUrl)}catch(x){}}
-  mineStore=get();try{localStorage.setItem("fmt-mine",JSON.stringify(mineStore))}catch(x){}mark("mine");
-  bd.closest(".m").remove();sayTpl(f.name,r)}
+  put({...keep,...r.o});if(r.logoUrl){await setLogo(r.logoUrl);$("lg").checked=true;try{localStorage.setItem("fmt-logo",r.logoUrl)}catch(x){}}
+  TPS[id]={o:get(),logo:tpLogo()};tpStore();mark(id);tpMark();
+  bd.closest(".m").remove();sayTpl(f.name,r,TP[id])}
  catch(x){bd.innerHTML=`<p class="err">${esc(x.message||"I could not read this template.")}</p>`}};
+tpMark();
 
 
 /* ---------- sheet ---------- */
@@ -842,7 +877,7 @@ $("mdl").onclick=e=>{e.stopPropagation();const m=$("mmenu");if(m.hidden){menuBui
 document.addEventListener("click",e=>{if(!e.target.closest("#mmenu"))$("mmenu").hidden=true});
 $("thk").onclick=()=>{THINK=!THINK;$("thk").setAttribute("aria-pressed",String(THINK))};
 $("dsn").onclick=()=>open_();
-const DNAME={exam:"School exam",plain:"Plain document",mine:"My design","":"Custom design"};
+const DNAME={exam:"School exam",plain:"Plain document",mine:"My design",tp_ar:"Arabic exams",tp_so:"Somali exams",tp_ex:"Other exams",tp_ls:"Lessons","":"Custom design"};
 const mark0=mark;mark=function(id){mark0(id);$("dsnt").textContent=DNAME[id]||"Custom design"};
 /* files made in this visit */
 const MADE=[];
@@ -1331,6 +1366,11 @@ function isBand(p){
 const frag=(d,xml)=>{const r=new DOMParser().parseFromString(`<root ${NS}>${xml}</root>`,"application/xml");if(r.getElementsByTagName("parsererror").length)throw new Error("Internal layout error");return Array.from(r.documentElement.childNodes).map(n=>d.importNode(n,true))};
 const rfx=f=>`<w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:eastAsia="${f}" w:cs="${f}"/>`;
 
+const LB={
+ en:{cls:"Class:",marks:"Total Marks:",name:"Student Name:",roll:"Roll No:",date:"Date:",teach:"Teacher:",term:"Term:",time:"Time Allowed:",page:"Page ",of:" of "},
+ so:{cls:"Fasalka :",marks:"Wadarta Dhibcaha:",name:"Magaca Ardayga :",roll:"Namberka :",date:"Taariikh :",teach:"Macalinka :",term:"Xilliga :",time:"Waqtiga :",page:"BOGGA ",of:" / "},
+ ar:{cls:"الفصل:",marks:"الدرجة الكلية:",name:"الاسم:",roll:"رقم الجلوس:",date:"التاريخ:",teach:"المعلم:",term:"الفصل الدراسي:",time:"الزمن:",subj:"المادة:",page:"صفحة ",of:" من "}};
+const lb=o=>LB[o.lang]||LB.en;
 function fieldRuns(rp,code){
  const f=t=>`<w:r>${rp}<w:fldChar w:fldCharType="${t}"/></w:r>`;
  return f("begin")+`<w:r>${rp}<w:instrText xml:space="preserve"> ${code} </w:instrText></w:r>`+f("separate")+`<w:r>${rp}<w:t>1</w:t></w:r>`+f("end")}
@@ -1338,19 +1378,25 @@ function footerXml(o,tw){
  const sz=Math.max(16,Math.round((o.size-1)*2)),f=esc(o.font);
  const rp=`<w:rPr>${rfx(f)}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
  const t=s=>`<w:r>${rp}<w:t xml:space="preserve">${esc(s)}</w:t></w:r>`;
+ const L=lb(o),AR=o.lang==="ar";
+ const rp2=AR?rp.replace("<w:sz ","<w:rtl/><w:sz "):rp;
+ const t2=s=>`<w:r>${rp2}<w:t xml:space="preserve">${esc(s)}</w:t></w:r>`;
  let num="";
- if(o.pn==="n")num=fieldRuns(rp,"PAGE");
- if(o.pn==="x")num=t("Page ")+fieldRuns(rp,"PAGE");
- if(o.pn==="xofy")num=t("Page ")+fieldRuns(rp,"PAGE")+t(" of ")+fieldRuns(rp,"NUMPAGES");
+ if(o.pn==="n")num=fieldRuns(rp2,"PAGE");
+ if(o.pn==="x")num=t2(L.page)+fieldRuns(rp2,"PAGE")+(o.lang==="so"?t2(" AAD"):"");
+ if(o.pn==="xofy")num=t2(L.page)+fieldRuns(rp2,"PAGE")+t2(L.of)+fieldRuns(rp2,"NUMPAGES");
  const pos=o.pos==="center"?`<w:tab w:val="center" w:pos="${Math.round(tw/2)}"/>`:`<w:tab w:val="right" w:pos="${tw}"/>`;
- const body=(o.ft?t(o.ft):"")+(num?`<w:r>${rp}<w:tab/></w:r>`+num:"");
  const bd=o.fline?`<w:pBdr><w:top w:val="single" w:sz="4" w:space="6" w:color="000000"/></w:pBdr>`:"";
+ if(AR){const bodyA=(o.ft?t2(o.ft)+t2("   "):"")+num;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="${W}" xmlns:r="${R}"><w:p><w:pPr>${bd}<w:bidi/><w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/></w:pPr>${bodyA}</w:p></w:ftr>`}
+ const body=(o.ft?t2(o.ft):"")+(num?`<w:r>${rp2}<w:tab/></w:r>`+num:"");
  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="${W}" xmlns:r="${R}"><w:p><w:pPr>${bd}<w:tabs>${pos}</w:tabs><w:spacing w:before="0" w:after="0"/></w:pPr>${body}</w:p></w:ftr>`}
 
 function titleXml(o,tw,use){
  const f=esc(o.font),LW=use?1500:0;
  const none=["top","left","bottom","right","insideH","insideV"].map(e=>`<w:${e} w:val="nil"/>`).join("");
- const line=(t,sz)=>t?`<w:p><w:pPr><w:spacing w:before="0" w:after="40"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr>${rfx(f)}<w:b/><w:bCs/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${esc(t)}</w:t></w:r></w:p>`:"";
+ const RT=o.lang==="ar";
+ const line=(t,sz)=>t?`<w:p><w:pPr>${RT?"<w:bidi/>":""}<w:spacing w:before="0" w:after="40"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr>${rfx(f)}<w:b/><w:bCs/>${RT?"<w:rtl/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${esc(t)}</w:t></w:r></w:p>`:"";
  let c1="";
  if(use){
   const cx=720000,cy=Math.round(cx*logo.h/logo.w);
@@ -1358,18 +1404,22 @@ function titleXml(o,tw,use){
  const lines=line(o.t1,Math.round(o.hs*2))+line(o.t2,Math.round(o.hs*2))+line(o.t3,Math.round(o.size*2));
  const c2=`<w:tc><w:tcPr><w:tcW w:w="${tw-LW}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr>${lines||"<w:p/>"}</w:tc>`;
  const grid=use?`<w:gridCol w:w="${LW}"/><w:gridCol w:w="${tw-LW}"/>`:`<w:gridCol w:w="${tw}"/>`;
- const tbl=`<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${none}</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid><w:tr>${c1}${c2}</w:tr></w:tbl>`;
+ const tbl=`<w:tbl><w:tblPr>${RT?"<w:bidiVisual/>":""}<w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${none}</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid><w:tr>${c1}${c2}</w:tr></w:tbl>`;
  const rule=`<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="12" w:space="1" w:color="000000"/></w:pBdr><w:spacing w:before="0" w:after="160" w:line="120" w:lineRule="exact"/></w:pPr></w:p>`;
  return tbl+rule}
 
 function infoXml(o,tw){
  const f=esc(o.font),sz=Math.round(Math.max(o.size,8)*2),yr=new Date().getFullYear(),mo=new Date().getMonth()+1,h=Math.round(tw/2);o.i4=true;
  const bd=["top","left","bottom","right","insideH","insideV"].map(e=>`<w:${e} w:val="single" w:sz="6" w:space="0" w:color="000000"/>`).join("");
- const rp=b=>`<w:rPr>${rfx(f)}${b?"<w:b/><w:bCs/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
- const cell=(label,val)=>`<w:tc><w:tcPr><w:tcW w:w="${h}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="110" w:after="110"/></w:pPr><w:r>${rp(1)}<w:t xml:space="preserve">${esc(label)} </w:t></w:r><w:r>${rp(/_{3}/.test(val)?0:1)}<w:t xml:space="preserve">${esc(val)}</w:t></w:r></w:p></w:tc>`;
+ const L=lb(o),AR=o.lang==="ar";
+ const rp=b=>`<w:rPr>${rfx(f)}${b?"<w:b/><w:bCs/>":""}${AR?"<w:rtl/>":""}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
+ const cell=(label,val)=>`<w:tc><w:tcPr><w:tcW w:w="${h}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr>${AR?"<w:bidi/>":""}<w:spacing w:before="110" w:after="110"/></w:pPr><w:r>${rp(1)}<w:t xml:space="preserve">${esc(label)} </w:t></w:r><w:r>${rp(/_{3}/.test(val)?0:1)}<w:t xml:space="preserve">${esc(val)}</w:t></w:r></w:p></w:tc>`;
  const u=n=>"_".repeat(n);
- const rows=o.i4?[[["Class:",o.ic||u(8)],["Term:",u(14)]],[["Time Allowed:",o.itime||u(14)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`______ / ${mo} / ${yr}`],["Teacher:",o.it||u(24)]]]:[[["Class:",o.ic||u(8)],["Total Marks:",o.im||u(8)]],[["Student Name:",u(26)],["Roll No:",u(18)]],[["Date:",`____ / ____ / ${yr}`],["Teacher:",o.it||u(24)]]];
- const tbl=`<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${bd}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="${h}"/><w:gridCol w:w="${tw-h}"/></w:tblGrid>${rows.map(r=>`<w:tr>${cell(...r[0])}${cell(...r[1])}</w:tr>`).join("")}</w:tbl>`;
+ const dte=AR?u(14):`______ / ${mo} / ${yr}`;
+ const rows=AR?[[[L.name,u(26)],[L.subj,o.isub||u(14)]],[[L.cls,o.ic||u(8)],[L.time,o.itime||u(14)]],[[L.date,dte],[L.marks,o.im||u(8)]]]
+  :o.lang==="so"?[[[L.cls,o.ic||u(8)],[L.marks,o.im||u(8)]],[[L.name,u(20)],[L.roll,u(18)]],[[L.date,u(14)],[L.teach,o.it||u(24)]]]
+  :[[[L.cls,o.ic||u(8)],[L.term,u(14)]],[[L.time,o.itime||u(14)],[L.marks,o.im||u(8)]],[[L.name,u(26)],[L.roll,u(18)]],[[L.date,dte],[L.teach,o.it||u(24)]]];
+ const tbl=`<w:tbl><w:tblPr>${AR?"<w:bidiVisual/>":""}<w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${bd}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="${h}"/><w:gridCol w:w="${tw-h}"/></w:tblGrid>${rows.map(r=>`<w:tr>${cell(...r[0])}${cell(...r[1])}</w:tr>`).join("")}</w:tbl>`;
  return tbl+`<w:p><w:pPr><w:spacing w:before="0" w:after="120"/></w:pPr></w:p>`}
 
 function instrXml(o){
@@ -1680,15 +1730,22 @@ async function build(o){
  }
  const first8=paras.filter(p=>p.isConnected&&text(p).trim()).slice(0,25).map(text).join("\n");
  if(o.tb&&o.ib){
-  const TITLEISH=/school|primary|secondary|examination|\bexam\b|\btest\b|assessment/i,SUBJ0=/^\s*([A-Za-z][A-Za-z ]{1,40}?)\s+(examination|exam|test)\b/i;
+  const TITLEISH=/school|primary|secondary|examination|\bexam\b|\btest\b|assessment|imtixaan|abubakar|مدرسة|اختبار|الاختبار|امتحان/i,SUBJ0=/^\s*([A-Za-z][A-Za-z ]{1,40}?)\s+(examination|exam|test)\b/i;
   let n=0;
   for(const p of paras.filter(p=>p.isConnected&&!inTable(p)&&text(p).trim()).slice(0,3)){
    const t=text(p).trim();if(t.length>80||!TITLEISH.test(t)||(bandP(p)&&o.bands)||/\?/.test(t)||/^\d/.test(t))break;
    const sm=t.match(SUBJ0);if(sm&&!o.t2)o.t2=(sm[1]+" "+sm[2]).toUpperCase();
    const gm=t.match(/\b(grade|class)\s*(\d{1,2})\b/i);if(gm&&!o.ic)o.ic=gm[2];
-   p.remove();n++}
+   (o._rem=o._rem||[]).push(t);p.remove();n++}
+  if(o.lang!=="en"&&o._rem&&o._rem.length){
+   const rest=o._rem.filter(x=>!/school|primary|مدرسة|abubakar/i.test(x));
+   if(rest[0]&&!o.t2)o.t2=rest[0];
+   if(rest[1])o.t3=rest[1];
+   if(o.lang==="ar"){const sj=(rest[0]||"").match(/^اختبار\s+(.+)$/);if(sj&&!o.isub)o.isub=sj[1].trim();
+    const cm=(rest[1]||"").match(/الصف\s+(\S+)/);if(cm&&!o.ic)o.ic=cm[1]}
+   o._rem=null}
   if(n)log.push(["Title lines",`${n} old title line${n>1?"s":""} replaced by the school header`])}
- const hasInfo=/(^|\n)\s*(magaca|name|student|date|class|grade|fasalka|taariikh)\b/i.test(first8);
+ const hasInfo=/(^|\n)\s*(magaca|name|student|date|class|grade|fasalka|taariikh|الاسم|التاريخ|الفصل|المادة)/i.test(first8);
  if(hasInfo&&o.ib){
   const pats=[[/\b(grade|class|fasalka|fasal)\s*[:\-–]?\s*([0-9]{1,2}\b|[A-Za-z]{1,8}\b)/i,"ic"],[/\b(total\s*marks|marks|dhibcaha)\s*[:\-–]?\s*(\d{1,3})/i,"im"],[/\b(time(?:\s*allowed)?|duration)\s*[:\-–]?\s*(\d+\s*(?:hours?|hrs?|minutes?|mins?)?(?:\s*(?:and)?\s*\d+\s*(?:minutes?|mins?))?)/i,"itime"],[/\b(student\s*name|name|magaca)\s*[:\-–]?[\s_.…]*/i,null],[/\b(date|taariikh)\s*[:\-–]?[\s_.…\/0-9]*/i,null],[/\b(roll\s*(?:no|number)|teacher)\s*[:\-–]?[\s_.…]*/i,null]];
   const SUBJ=/^\s*([A-Za-z][A-Za-z ]{1,40}?)\s+(examination|exam|test)\b/i;
@@ -1701,9 +1758,9 @@ async function build(o){
    const got={};let left=t;
    const sm=left.match(SUBJ);if(sm){got.t2=(sm[1]+" "+sm[2]).toUpperCase();left=left.replace(SUBJ,"")}
    for(const[re,k]of pats){const m=left.match(re);if(m){if(k)got[k]=m[m.length-1].trim();left=left.replace(re,"")}}
-   if(!Object.keys(got).length&&!/(name|date|magaca|taariikh|class|grade|fasal|roll|teacher|term\s*[:\-–]|marks\s*[:\-–]|time\s*(allowed)?\s*[:\-–]|duration)/i.test(t))break;
+   if(!Object.keys(got).length&&!/(name|date|magaca|taariikh|class|grade|fasal|roll|teacher|macalin|namberka|dhibcaha|term\s*[:\-–]|marks\s*[:\-–]|time\s*(allowed)?\s*[:\-–]|duration|الاسم|التاريخ|الفصل|المادة|الزمن|الدرجة)/i.test(t))break;
    Object.assign(vals,got);take.push(p)}
-  const hasLabel=take.some(p=>/(name|date|magaca|taariikh|class|grade|fasal)/i.test(text(p)));
+  const hasLabel=take.some(p=>/(name|date|magaca|taariikh|class|grade|fasal|الاسم|التاريخ|الفصل)/i.test(text(p)));
   const rest=lead.filter(p=>!take.includes(p)).slice(0,1)[0];
   if(take.length&&hasLabel){
    take.forEach(p=>p.remove());
