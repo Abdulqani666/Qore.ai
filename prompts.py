@@ -61,7 +61,7 @@ COMMANDS = {
         desc="Ask anything. Attach files or pictures to ask about them."),
     "images": dict(
         label="Search images", kind="images", thinking=False, search=False, route=[],
-        desc="Find free pictures with credit. No AI used."),
+        desc="Find free pictures from words, or attach a PDF to copy its pictures out. No AI used."),
     "models": dict(
         label="Models", kind="models", thinking=False, search=False, route=[],
         desc="Show which AI models are ready."),
@@ -130,6 +130,7 @@ Body:
   ### EXERCISE 1 then "Answer the following questions:" and 5 numbered questions (1. 2. 3.), from easy to hard.
   ### EXERCISE 2 then a fill-in-the-blanks task: first a line starting with "> " that lists the missing words in brackets, for example > (Jubba, Europeans, 1905), then 5 numbered sentences each with ________ where a listed word goes.
   Optionally ### EXERCISE 3 with true or false, or matching in a table.
+- If a list "PICTURES FROM THE ATTACHED PDF" is given, use those pictures first: [[FIGURE: pdf:3 | Figure 1: caption]] uses picture 3 of the list (match the picture to the paragraph by its caption). Use search words only for pictures that are not in the list.
 - Everything must come from the sources or well-known facts for the grade. Never invent dates, names or numbers. Do not give the answers.
 - Write the activity and exercise headings in the document's language: Arabic نشاط 1 and تمرين 1; Somali SHAQO 1 and LAYLIS 1; English ACTIVITY 1 and EXERCISE 1.
 """
@@ -167,6 +168,7 @@ HOW TO USE IT
 - Design button: font size, title size, margins, border, header, footer, page numbers, logo, watermark. Presets: School exam and Plain document. "Save as my design" keeps a personal design.
 - Four saved templates: in the Design button, "My templates" has Arabic exams (right to left, Arabic labels), Somali exams (Somali labels and footer), Other subjects exams, and Lessons. Tap one to use it. Each starts with a ready design; change the design, then tap "Save design to this template" to keep it. Tap a template, then "Read it from a Word or LibreOffice file…" to learn it from the teacher's own file. Then attach a file and send /formatter.
 - /lesson writes a textbook-style lesson like the school sample: school header with UNIT and topic, black section bars, bold key names and dates, pictures with "Figure 1:" captions found from free picture sites (with credit at the end), ACTIVITY and EXERCISE parts (questions, fill the blanks with a word box), footer "SUBJECT TEACHER: name" and page numbers. Example: /lesson Unit 2 History of Somalia, grade 8 Social Studies, the colonial period. The design comes from the Lessons template.
+- Copying pictures: /images with words finds free pictures with credit. /images with a PDF attached (and no words) pulls every picture out of the PDF with its "Figure N" caption, and each one has Copy and Save buttons plus Save all (zip). /lesson with a PDF attached can reuse the PDF pictures in the new lesson.
 - Template connector (Word and LibreOffice): in the Design button, tap "Use my Word or LibreOffice template…" and pick a .docx, .dotx, .odt, .ott, .doc or .rtf file. Qore reads its font, text size, title size, margins, title line, footer text, page numbers, logo, black and white and page border, then saves it as "My saved design". After that, attach a file and send /formatter to use it. It copies the style only, not the content. Qore itself uses LibreOffice on the server to open .odt files and to make PDFs.
 - Theme button (top bar): switches Auto, Light and Dark. Search box in the chat history menu finds old chats.
 - Other connectors (Google Drive, Gmail, OneDrive, Dropbox) are NOT available yet. If asked, say so and offer the template connector or the + button to attach files.

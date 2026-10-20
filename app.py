@@ -290,6 +290,91 @@ def images():
     return jsonify(items=items[:16])
 
 
+@app.post("/api/pdfimages")
+def pdfimages():
+    """Pulls the pictures out of a PDF (with their 'Figure N:' captions) so the teacher can copy them or use them in a lesson."""
+    g = guard()
+    if g:
+        return g
+    if not shutil.which("pdfimages"):
+        return jsonify(error="Picture extractor is not installed on this server."), 501
+    if limited():
+        return jsonify(error="Too many requests. Wait a little and try again."), 429
+    f = request.files.get("file")
+    if not f:
+        return jsonify(error="No file."), 400
+    import base64, hashlib, glob
+    d = tempfile.mkdtemp(prefix="qpi")
+    try:
+        src = os.path.join(d, "in.pdf")
+        f.save(src)
+        lst = subprocess.run(["pdfimages", "-list", src], capture_output=True, text=True, timeout=60).stdout.splitlines()[2:]
+        subprocess.run(["pdfimages", "-all", "-p", src, os.path.join(d, "im")], capture_output=True, timeout=120)
+        files = sorted(glob.glob(os.path.join(d, "im-*")))
+        rows = [r.split() for r in lst if r.strip()]
+        caps = {}
+        pages = 0
+        try:
+            out = subprocess.run(["pdfinfo", src], capture_output=True, text=True, timeout=30).stdout
+            pages = int(next(l for l in out.splitlines() if l.startswith("Pages:")).split()[1])
+        except Exception:
+            pass
+        for pg in range(1, min(pages, 60) + 1):
+            t = subprocess.run(["pdftotext", "-f", str(pg), "-l", str(pg), "-layout", src, "-"], capture_output=True, text=True, timeout=30).stdout
+            found = []
+            lines = t.splitlines()
+            for li, ln in enumerate(lines):
+                m = re.search(r"(?i)\b(figure|fig\.?|shaxda|sawir)\s*(\d+)\s*[:.\-]\s*(\S.{1,70})$", ln)
+                if not m:
+                    continue
+                cap = f"Figure {m.group(2)}: " + re.sub(r"\s{2,}.*$", "", m.group(3).strip())
+                nxt = lines[li + 1] if li + 1 < len(lines) else ""
+                if nxt.startswith(" " * 25) and 0 < len(nxt.strip()) < 30 and not re.match(r"(?i)\s*(figure|fig)", nxt):
+                    cap += " " + nxt.strip()
+                if cap not in found:
+                    found.append(cap)
+            caps[pg] = found
+        from collections import Counter
+        cnt = Counter()
+        for fp, row in zip(files, rows):
+            try:
+                with open(fp, "rb") as fh:
+                    cnt[hashlib.md5(fh.read()).hexdigest()] += 1
+            except Exception:
+                pass
+        items, seen, per_page = [], set(), {}
+        for fp, row in zip(files, rows):
+            try:
+                page, w, h, typ = int(row[0]), int(row[3]), int(row[4]), row[2]
+            except Exception:
+                continue
+            ext = os.path.splitext(fp)[1].lower()
+            if typ in ("smask", "mask") or ext not in (".png", ".jpg", ".jpeg") or w < 90 or h < 90:
+                continue
+            with open(fp, "rb") as fh:
+                data = fh.read()
+            if len(data) > 700_000:
+                continue
+            hsh = hashlib.md5(data).hexdigest()
+            if hsh in seen or cnt[hsh] >= 3:
+                continue
+            seen.add(hsh)
+            k = per_page.get(page, 0)
+            per_page[page] = k + 1
+            cl = caps.get(page, [])
+            items.append({"n": len(items) + 1, "page": page, "w": w, "h": h, "caption": cl[k] if k < len(cl) else "",
+                          "mime": "image/png" if ext == ".png" else "image/jpeg", "b64": base64.b64encode(data).decode()})
+            if len(items) >= 30:
+                break
+        if not items:
+            return jsonify(error="I found no pictures inside this PDF."), 404
+        return jsonify(items=items)
+    except subprocess.TimeoutExpired:
+        return jsonify(error="This PDF took too long to read."), 504
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
 @app.get("/api/imgfetch")
 def imgfetch():
     """Fetches one picture from a trusted free-picture site so the page can put it in a lesson."""

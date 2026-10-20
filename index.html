@@ -408,6 +408,7 @@ header .sp{flex:1}
 #hdrw #hout:hover{background:var(--soft);color:var(--ink)}
 @media (prefers-color-scheme:dark){#hdrw .logo2,#hdrw #hnew{color:#06231e}}
 #hdrw .hf:has(#hout[hidden]){display:none}
+.gi .cap{display:flex;flex-direction:column;font-size:12px;margin:6px 2px}.gi .cap span{color:var(--mute)}.gi img{width:100%;border-radius:12px;display:block}
 .chip.saved::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand);margin-left:7px;vertical-align:middle}
 #tps{flex-wrap:wrap;overflow:visible}
 </style>
@@ -1084,7 +1085,12 @@ async function composeFigure(blob,cap){
   const png=await new Promise(ok=>c.toBlob(ok,"image/png"));if(!png)return null;
   return{bytes:new Uint8Array(await png.arrayBuffer()),w:c.width,h:c.height}}
  catch(e){return null}finally{URL.revokeObjectURL(url)}}
+let PDFPICS=[];
+const b64bytes=b=>Uint8Array.from(atob(b),c=>c.charCodeAt(0));
+async function pdfPictures(f){const fd=new FormData();fd.append("file",f);const j=await api("/api/pdfimages",{method:"POST",body:fd});return j.items}
 async function makeFigure(q,cap){
+ const mp=String(q).trim().match(/^pdf:\s*(\d+)$/i);
+ if(mp){const p=PDFPICS[+mp[1]-1];if(!p)return null;const f=await composeFigure(new Blob([b64bytes(p.b64)],{type:p.mime}),cap);return f?{...f,credit:""}:null}
  try{const j=await api("/api/images?q="+encodeURIComponent(q));
   for(const it of (j.items||[]).slice(0,5)){if(!it.thumb)continue;
    try{const r=await fetch("/api/imgfetch?u="+encodeURIComponent(it.thumb),{headers:access?{"X-Access":access}:{}});if(!r.ok)continue;
@@ -1201,6 +1207,9 @@ async function runAI(cmd,text,tags,files,ctx={}){
  if(cmd==="revise"&&!lastDoc&&!files.length){say("<p>Make or attach a document first, then ask for changes.</p>");return}
  busy=true;const t=typing();working(t,["Sending..."]);
  try{
+  if(cmd==="lesson"||cmd==="build_document"){const pf=files.filter(f=>/\.pdf$/i.test(f.name));PDFPICS=[];
+   for(const f of pf){try{PDFPICS.push(...await pdfPictures(f))}catch(e){}}
+   if(PDFPICS.length)text+="\n\nPICTURES FROM THE ATTACHED PDF (you may use them; write [[FIGURE: pdf:N | Figure k: caption]] where N is the number below):\n"+PDFPICS.map((p,i)=>`pdf:${i+1} = page ${p.page}, ${p.caption||"no caption"}`).join("\n")}
   const fd=new FormData();fd.append("cmd",cmd);fd.append("text",text);fd.append("tags",tags.join(","));
   fd.append("history",JSON.stringify(hist.slice(-6)));
   if(lastDoc)fd.append("prev_doc",lastDoc.md);
@@ -1230,6 +1239,20 @@ async function aiAssist(o,tags){
   if(!o.im&&d.marks){o.im=String(d.marks).slice(0,8);got.push("marks")}
   return got.length?["AI ("+r.provider+")","read the "+got.join(", ")+" from your document"]:null
  }catch(e){return null}}
+async function toPngBlob(p){const url=URL.createObjectURL(new Blob([b64bytes(p.b64)],{type:p.mime}));
+ try{const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});const c=document.createElement("canvas");c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext("2d").drawImage(im,0,0);return await new Promise(ok=>c.toBlob(ok,"image/png"))}finally{URL.revokeObjectURL(url)}}
+const picName=(p,i)=>"picture_"+(i+1)+(p.caption?"_"+p.caption.replace(/[^A-Za-z0-9]+/g,"_").slice(0,30):"")+(p.mime==="image/png"?".png":".jpg");
+async function showPdfImages(files){
+ for(const f of files){
+  const t=typing();
+  try{
+   const items=await pdfPictures(f);PDFPICS=items.slice();
+   t.innerHTML=`<p>I found <b>${items.length}</b> picture${items.length===1?"":"s"} in <b>${esc(f.name)}</b>. Tap <b>Copy</b> to copy one, or <b>Save</b> to keep it. To use them in a lesson, attach this PDF and send <b>/lesson</b>.</p><div class="grid">`+items.map((x,i)=>`<div class="gi"><img src="data:${x.mime};base64,${x.b64}" alt="${esc(x.caption||"Picture "+x.n)}"><div class="cap"><b>${esc(x.caption||"Picture "+x.n)}</b><span>page ${x.page}</span></div><div class="acts"><button class="btn" data-c="${i}">Copy</button><button class="btn" data-s="${i}">Save</button></div></div>`).join("")+`</div><div class="acts"><button class="btn pri" data-z="1">Save all (zip)</button></div>`;
+   t.querySelectorAll("[data-c]").forEach(b=>b.onclick=async()=>{try{const blob=await toPngBlob(items[+b.dataset.c]);await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);b.textContent="Copied"}catch(e){b.textContent="Use Save"}});
+   t.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{const i=+b.dataset.s,p=items[i];saveBytes(picName(p,i),b64bytes(p.b64),p.mime)});
+   t.querySelector("[data-z]").onclick=async()=>{const z=new JSZip();items.forEach((p,i)=>z.file(picName(p,i),b64bytes(p.b64)));saveBytes("pictures_from_"+f.name.replace(/\.pdf$/i,"")+".zip",await z.generateAsync({type:"uint8array"}),"application/zip")}
+  }catch(e){if(e.auth&&await ensureAI())return showPdfImages(files);t.innerHTML=`<p class="err">${esc(e.message)}</p>`}
+  down()}}
 async function showImages(q){
  if(!q){say("<p>Say what to search for, for example <b>/images water cycle diagram</b>.</p>");return}
  const t=typing();
@@ -1271,7 +1294,7 @@ async function send(){
  say((raw.trim()?`<p>${esc(raw.trim())}</p>`:"")+files.map(f=>fcard(f.name,size(f.size),(f.name.split(".").pop()||"file").slice(0,4).toUpperCase())).join(""),"u");
  if(cmd==="fix"){if(!lastFmt){say("<p>Format a Word file first, then tell me what to correct.</p>");return}return tellFormatter(text,tags)}
  if(cmd==="models")return showModels();
- if(cmd==="images")return showImages(text);
+ if(cmd==="images"){const pf=files.filter(f=>/\.pdf$/i.test(f.name));if(pf.length&&!text.trim()){if(!await ensureAI())return;return showPdfImages(pf)}return showImages(text)}
  if(cmd==="formatter"){
   const d=files.filter(f=>/\.docx$/i.test(f.name));
   if(!d.length){say("<p>Attach a Word (.docx) file to format.</p>");return}
