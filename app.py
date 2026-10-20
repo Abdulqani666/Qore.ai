@@ -79,12 +79,26 @@ def read_file(f):
     data = f.read()
     mime = f.mimetype or ""
     if name.endswith(".docx"):
-        import docx
-        d = docx.Document(io.BytesIO(data))
-        out = [p.text for p in d.paragraphs if p.text.strip()]
-        for t in d.tables:
-            for r in t.rows:
-                out.append(" | ".join(c.text.strip() for c in r.cells))
+        try:
+            import docx
+            d = docx.Document(io.BytesIO(data))
+            out = [p.text for p in d.paragraphs if p.text.strip()]
+            for t in d.tables:
+                for r in t.rows:
+                    out.append(" | ".join(c.text.strip() for c in r.cells))
+        except Exception:
+            # damaged file (for example a bad picture inside): read only the words
+            import re, zipfile, html as _h
+            try:
+                z = zipfile.ZipFile(io.BytesIO(data))
+                xml = z.read("word/document.xml").decode("utf8", "ignore")
+            except Exception:
+                raise ValueError(f"I cannot open {f.filename}. The Word file looks damaged. Open it in Word, save it again, and attach it again.")
+            out = []
+            for para in re.findall(r"<w:p[ >].*?</w:p>", xml, flags=re.S):
+                t = "".join(re.findall(r"<w:t[^>]*>(.*?)</w:t>", para, flags=re.S))
+                if t.strip():
+                    out.append(_h.unescape(t))
         return f"[File {f.filename}]\n" + "\n".join(out), None
     if name.endswith(".pdf"):
         try:
@@ -209,7 +223,10 @@ def run():
     prev_doc = request.form.get("prev_doc", "")[:MAX_TEXT]
     texts, ai_files = [], []
     for f in request.files.getlist("files")[:8]:
-        t, af = read_file(f)
+        try:
+            t, af = read_file(f)
+        except ValueError as e:
+            return jsonify(error=str(e)), 400
         texts.append(t)
         if af:
             ai_files.append(af)
