@@ -672,7 +672,7 @@ const SEED={
  tp_ar:{...PRE.exam,lang:"ar",font:"Tahoma",caps:"none",num:"none",gi:false,t1:"مدرسة أبوبكر الصديق الابتدائية والإعدادية",t2:"",t3:"الاختبار الشهري",ft:"",pn:"x",pos:"center",wm:true},
  tp_so:{...PRE.exam,lang:"so",t3:"IMTIXAAN BILEED",ft:"DALLADA IMTIXAANAADKA",pn:"x",pos:"right"},
  tp_ex:{...PRE.exam},
- tp_ls:{...PRE.plain,font:"Verdana",size:12,hs:14,bw:true,caps:"headings",num:"none",tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",lg:true,wm:true,mt:15,ml:18,border:true,ft:"LESSON NOTES",pn:"x",pos:"right",fline:true,rm:true}};
+ tp_ls:{...PRE.plain,font:"Verdana",size:11,hs:14,force:true,bw:true,tight:true,caps:"none",num:"auto",bands:true,tbl:true,tb:true,t1:"ABUBAKAR SADIQ PRIMARY SCHOOL",lg:true,wm:true,mt:15,ml:18,border:true,ft:"{SUBJECT} TEACHER: ABDIQANI MUSE MOHAMED",pn:"x",pos:"right",fline:true,rm:true,ib:false,gi:false}};
 let TPS={};try{TPS=JSON.parse(localStorage.getItem("fmt-tpls")||"{}")}catch(e){}
 if(!TPS.tp_ex&&mineStore){TPS.tp_ex={o:mineStore,logo:null}}
 let ACT="";
@@ -1069,15 +1069,43 @@ async function poll(job,bubble,limit=900000){
 
 /* ---------- markdown to Word ---------- */
 const xe=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+async function composeFigure(blob,cap){
+ const url=URL.createObjectURL(blob);
+ try{const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});
+  const W0=330,maxH=300;let w=W0,hh=Math.round(im.naturalHeight*W0/im.naturalWidth);if(hh>maxH){hh=maxH;w=Math.round(im.naturalWidth*maxH/im.naturalHeight)}
+  if(w<80||hh<80)return null;
+  const c=document.createElement("canvas"),x=c.getContext("2d"),fs=19;x.font=`bold ${fs}px Verdana, DejaVu Sans, Arial, sans-serif`;
+  const words=String(cap||"").split(/\s+/).filter(Boolean),lines=[];let cur="";
+  for(const t of words){const tt=cur?cur+" "+t:t;if(x.measureText(tt).width>w&&cur){lines.push(cur);cur=t}else cur=tt}if(cur)lines.push(cur);
+  const capH=lines.length?lines.length*(fs+5)+12:0;c.width=w;c.height=hh+capH;
+  const x2=c.getContext("2d");x2.save();x2.beginPath();x2.roundRect?x2.roundRect(0,0,w,hh,26):x2.rect(0,0,w,hh);x2.clip();x2.drawImage(im,0,0,w,hh);x2.restore();
+  x2.font=`bold ${fs}px Verdana, DejaVu Sans, Arial, sans-serif`;x2.fillStyle="#000";x2.textAlign="center";
+  lines.forEach((t,k)=>x2.fillText(t,w/2,hh+14+fs+k*(fs+5)-4));
+  const png=await new Promise(ok=>c.toBlob(ok,"image/png"));if(!png)return null;
+  return{bytes:new Uint8Array(await png.arrayBuffer()),w:c.width,h:c.height}}
+ catch(e){return null}finally{URL.revokeObjectURL(url)}}
+async function makeFigure(q,cap){
+ try{const j=await api("/api/images?q="+encodeURIComponent(q));
+  for(const it of (j.items||[]).slice(0,5)){if(!it.thumb)continue;
+   try{const r=await fetch("/api/imgfetch?u="+encodeURIComponent(it.thumb),{headers:access?{"X-Access":access}:{}});if(!r.ok)continue;
+    const f=await composeFigure(await r.blob(),cap);if(f)return{...f,credit:`${String(it.by||"").replace(/<[^>]*>/g,"").slice(0,40)} (${String(it.license||"").trim()})`}}catch(e){}}}
+ catch(e){}
+ return null}
 async function mdToDocx(md){
  const meta={};
  let L=md.replace(/\r/g,"").replace(/^\s*```\w*\n?/,"").replace(/\n?```\s*$/,"").split("\n"),i=0;
- for(;i<L.length;i++){const m=L[i].match(/^@(title|subtitle|class|marks):\s*(.*)$/i);if(m)meta[m[1].toLowerCase()]=m[2].trim();else if(L[i].trim()==="")continue;else break}
+ for(;i<L.length;i++){const m=L[i].match(/^@(title|subtitle|class|marks|subject):\s*(.*)$/i);if(m)meta[m[1].toLowerCase()]=m[2].trim();else if(L[i].trim()==="")continue;else break}
  L=L.slice(i);
+ const FIGS={};
+ await Promise.all(L.map(async(ln,k)=>{const m=ln.trim().match(/^\[\[\s*FIGURE\s*:\s*(.+?)\s*\|\s*(.+?)\s*\]\]$/i);if(m)FIGS[k]=await makeFigure(m[1],m[2])}));
+ const figMedia=[],credits=[];let pendFig=null;
  const isAr=s=>{const a=(s.match(/[\u0600-\u06FF]/g)||[]).length,l=(s.match(/[A-Za-z]/g)||[]).length;return a>l};
  const runs=(s,bold)=>{const R2=isAr(s);return s.split("**").map((g,k)=>[g,k%2===1||bold]).filter(x=>x[0]).map(([g,b])=>`<w:r>${b||R2?`<w:rPr>${b?"<w:b/><w:bCs/>":""}${R2?"<w:rtl/>":""}</w:rPr>`:""}<w:t xml:space="preserve">${xe(g)}</w:t></w:r>`).join("")};
  const para=(s,o={})=>`<w:p><w:pPr>${o.keep?"<w:keepNext/>":""}${(o.bidi||isAr(s))?"<w:bidi/>":""}<w:spacing w:before="${o.b||0}" w:after="${o.a==null?80:o.a}"/>${o.ind?`<w:ind w:left="${o.ind}" w:hanging="${o.hang||0}"/>`:""}</w:pPr>${runs(s,o.bold)}</w:p>`;
  let x="";const docAr=isAr(L.join("\n"));
+ const takeFig=()=>{if(!pendFig)return"";const f=pendFig;pendFig=null;const n=figMedia.length+1,cx=Math.round(f.w*9525*0.46),cy=Math.round(f.h*9525*0.46);figMedia.push(f);if(f.credit)credits.push(f.credit);
+  return `<w:r><w:drawing><wp:anchor distT="0" distB="0" distL="${docAr?0:137160}" distR="${docAr?137160:0}" simplePos="0" relativeHeight="${251658240+n}" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="0"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="margin"><wp:align>${docAr?"left":"right"}</wp:align></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapSquare wrapText="${docAr?"right":"left"}"/><wp:docPr id="${9100+n}" name="Figure ${n}"/><wp:cNvGraphicFramePr/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="fig${n}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdFig${n}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>`};
+ const withFig=p=>{const f=takeFig();return f?p.replace(/<\/w:pPr>/,"</w:pPr>"+f):p};
  for(let k=0;k<L.length;k++){
   const s=L[k].replace(/\s+$/,"");if(!s.trim())continue;
   if(/^\s*\|/.test(s)){
@@ -1085,23 +1113,32 @@ async function mdToDocx(md){
    k--;const n=Math.max(...rows.map(r=>r.length)),w=Math.floor(9000/n);
    x+=`<w:tbl><w:tblPr>${isAr(rows[0].join(" "))?"<w:bidiVisual/>":""}<w:tblW w:w="5000" w:type="pct"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tblBorders></w:tblPr><w:tblGrid>${Array(n).fill(`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>`+rows.map((r,ri)=>`<w:tr>${Array.from({length:n},(_,c)=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/></w:tcPr>${para(r[c]||"",{a:40,bold:ri===0})}</w:tc>`).join("")}</w:tr>`).join("")+`</w:tbl>`+para("",{a:60});continue}
   let m;
+  if(/^\[\[\s*FIGURE\s*:/i.test(s.trim())){if(FIGS[k])pendFig=FIGS[k];continue}
+  if((m=s.match(/^#{3,6}\s+(.*)$/))){x+=`<w:p><w:pPr><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="000000"/></w:pBdr>${isAr(m[1])?"<w:bidi/>":""}<w:spacing w:before="160" w:after="80"/></w:pPr>${runs(m[1].replace(/\*\*/g,""),true)}</w:p>`;continue}
+  if((m=s.match(/^>\s?(.*)$/))){const bx=["top","left","bottom","right"].map(e=>`<w:${e} w:val="single" w:sz="6" w:space="4" w:color="000000"/>`).join("");x+=`<w:p><w:pPr>${isAr(m[1])?"<w:bidi/>":""}<w:pBdr>${bx}</w:pBdr><w:spacing w:before="120" w:after="160"/><w:ind w:left="113" w:right="113"/></w:pPr>${runs(m[1],true)}</w:p>`;continue}
   if((m=s.match(/^#{1,6}\s+(.*)$/)))x+=para(m[1].replace(/\*\*/g,""),{bold:1,b:140,a:80,keep:1});
   else if(/^_{3,}$/.test(s.trim()))x+=para(s.trim(),{a:60,bidi:docAr});
   else if(/^[A-Da-dأبجد][.)]\s/.test(s.trim()))x+=para(s.trim(),{ind:720,hang:360,a:30});
-  else if((m=s.match(/^\s*[-*•]\s+(.*)$/)))x+=para("• "+m[1],{ind:720,hang:360,a:40});
-  else x+=para(s.trim(),/^\d+[.)]\s/.test(s.trim())?{b:60}:{});
+  else if((m=s.match(/^\s*[-*•]\s+(.*)$/)))x+=withFig(para("• "+m[1],{ind:720,hang:360,a:40}));
+  else x+=withFig(para(s.trim(),/^\d+[.)]\s/.test(s.trim())?{b:60}:{}));
  }
+ if(credits.length)x+=para("Pictures: "+[...new Set(credits)].join("; "),{b:120});
  const z=new JSZip();
- z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`);
+ z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`);
  z.file("_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/officeDocument" Target="word/document.xml"/></Relationships>`);
- z.file("word/_rels/document.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/styles" Target="styles.xml"/></Relationships>`);
+ z.file("word/_rels/document.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/styles" Target="styles.xml"/>${figMedia.map((f,n)=>`<Relationship Id="rIdFig${n+1}" Type="${R}/image" Target="media/fig${n+1}.png"/>`).join("")}</Relationships>`);
+ figMedia.forEach((f,n)=>z.file(`word/media/fig${n+1}.png`,f.bytes));
  z.file("word/styles.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:eastAsia="Verdana" w:cs="Verdana"/><w:sz w:val="20"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`);
- z.file("word/document.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="${W}" xmlns:r="${R}"><w:body>${x}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`);
+ z.file("word/document.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>${x}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`);
  return{bytes:await z.generateAsync({type:"uint8array"}),meta}}
 async function buildFrom(bytes,o){const old=buf;buf=bytes;try{return await build(o)}finally{buf=old}}
 function designFor(cmd,meta){
- const o=get(),examLike=["exam","answer_key","worksheet"].includes(cmd);
+ let o=get();const examLike=["exam","answer_key","worksheet"].includes(cmd);
+ if(cmd==="lesson"){const t=TPS.tp_ls||{o:SEED.tp_ls};o={...o,...t.o}}
  o.tb=true;o.rm=false;
+ if(cmd==="lesson"){o.t2=(meta.title||"").toUpperCase();o.t3=(meta.subtitle||"").toUpperCase();o.ib=false;o.gi=false;
+  const sj=(meta.subject||"").toUpperCase().trim();o.ft=String(o.ft||"").replace("{SUBJECT}",sj).replace(/^\s+/,"");if(!sj)o.ft=o.ft.replace(/^TEACHER/,"TEACHER");return o}
+ o.ft=String(o.ft||"").replace("{SUBJECT} ","").replace("{SUBJECT}","");
  o.t2=(meta.title||o.t2||"").toUpperCase();
  if(meta.subtitle)o.t3=meta.subtitle.toUpperCase();else if(!examLike)o.t3="";
  if(examLike&&cmd!=="answer_key"){if(meta.class)o.ic=meta.class;if(meta.marks)o.im=meta.marks}
@@ -1359,11 +1396,12 @@ const KW=/^\s*(part|qaybta|qaybaha|qiimaynta|section|القسم|قسم|السؤ�
 let useKW=false;
 function isBand(p){
  if(inTable(p))return false;
+ if(qa(p,"pBdr")[0])return false;
  const t=text(p).trim();if(!t||t.length>60)return false;
  if(useKW)return KW.test(t);
  const ps=qa(p,"pStyle")[0];
  if(KW.test(t))return true;
- return isHeading(p)&&t===t.toUpperCase()&&/[A-Z]/.test(t)&&t.length<=40}
+ return isHeading(p)&&t===t.toUpperCase()&&/[A-Z]/.test(t)&&t.length<=60}
 const frag=(d,xml)=>{const r=new DOMParser().parseFromString(`<root ${NS}>${xml}</root>`,"application/xml");if(r.getElementsByTagName("parsererror").length)throw new Error("Internal layout error");return Array.from(r.documentElement.childNodes).map(n=>d.importNode(n,true))};
 const rfx=f=>`<w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:eastAsia="${f}" w:cs="${f}"/>`;
 
@@ -1436,6 +1474,7 @@ function instrXml(o){
 
 async function build(o){
  o.size=parseFloat(o.size)||12;o.hs=parseFloat(o.hs)||o.size+2;
+ o.ft=String(o.ft||"").replace(/\{SUBJECT\}\s*/,"");
  const zip=await JSZip.loadAsync(buf),log=[],P=new DOMParser(),S=new XMLSerializer();
  if(!zip.file("word/document.xml"))throw new Error("This file has no document body.");
  const doc=P.parseFromString(await zip.file("word/document.xml").async("string"),"application/xml");
@@ -1576,7 +1615,7 @@ async function build(o){
   const OPT=/^\s*[A-Za-zÀ-ɏ]{1,2}[.)]\s/;
   const numRe=/^\s*(\d{1,3})\s*[-–.)]\s*(?!\d)/;
   let seg=[],segs=[seg];
-  qa(doc,"p").forEach(p=>{if(inTable(p))return;const t=text(p).trim();if(!t)return;if(o.bands&&bandP(p)){seg=[];segs.push(seg);return}seg.push(p)});
+  qa(doc,"p").forEach(p=>{if(inTable(p))return;const t=text(p).trim();if(!t)return;if((o.bands&&bandP(p))||(qa(p,"pBdr")[0]&&isHeading(p))){seg=[];segs.push(seg);return}seg.push(p)});
   const jobs=[];
   qa(doc,"p").forEach(p=>{if(hintOf(p).has("unnumber"))qa(p,"numPr").forEach(e=>e.remove())});
   segs.forEach(sg=>{

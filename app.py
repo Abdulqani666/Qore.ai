@@ -290,6 +290,31 @@ def images():
     return jsonify(items=items[:16])
 
 
+@app.get("/api/imgfetch")
+def imgfetch():
+    """Fetches one picture from a trusted free-picture site so the page can put it in a lesson."""
+    g = guard()
+    if g:
+        return g
+    from urllib.parse import urlparse
+    u = request.args.get("u", "")
+    p = urlparse(u)
+    host = (p.hostname or "").lower()
+    if p.scheme != "https" or not (host.endswith(".wikimedia.org") or host == "api.openverse.org" or host.endswith(".openverse.org")):
+        return jsonify(error="This picture site is not allowed."), 400
+    if ai.FAKE:
+        return jsonify(error="No pictures in test mode."), 404
+    try:
+        r = requests.get(u, headers={"User-Agent": "QoreSchoolApp/1.0 (teacher tool)"}, timeout=20, stream=True)
+        data = r.raw.read(4_000_001, decode_content=True)
+        ct = r.headers.get("Content-Type", "")
+        if r.status_code != 200 or not ct.startswith("image/") or len(data) > 4_000_000:
+            return jsonify(error="Picture not available."), 404
+        return Response(data, mimetype=ct)
+    except Exception:
+        return jsonify(error="Picture not available."), 404
+
+
 # ------------------------------------------------------------ Word -> PDF (LibreOffice)
 CONV = threading.Lock()
 PDFS = {}
