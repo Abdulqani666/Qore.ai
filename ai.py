@@ -81,6 +81,21 @@ def _is_retryable(e):
     return s in (429, 500, 502, 503, 504, 529) or "overloaded" in msg or "unavailable" in msg or "timeout" in msg
 
 
+BILLING = {}
+
+
+def _is_billing(e):
+    m = str(e).lower()
+    return ("credit balance" in m or "no credits" in m or "insufficient_quota" in m or "exceeded your current quota" in m
+            or "billing" in m and ("limit" in m or "hard" in m) or "resource_exhausted" in m and "quota" in m)
+
+
+def _billing_text(provider):
+    return {"claude": "has no credit left. Add credit at console.anthropic.com > Plans and Billing.",
+            "gpt": "has no credit left. Add credit at platform.openai.com > Billing.",
+            "gemini": "has no quota left. Check billing at aistudio.google.com."}.get(provider, "has no credit left.")
+
+
 def _is_auth(e):
     s = _status(e)
     return s in (401, 403)
@@ -271,6 +286,9 @@ def call(provider, tier, system, messages, files=(), thinking=False, max_tokens=
                 return t, model, s
             except Exception as e:                       # noqa: BLE001
                 last = e
+                if _is_billing(e):
+                    BILLING[provider] = time.time() + 3600
+                    raise Unusable(f"{LABEL[provider]} {_billing_text(provider)}")
                 if _is_auth(e):
                     raise Unusable(f"{LABEL[provider]} rejected the key. Check it in Render settings.")
                 if _is_missing_model(e):
@@ -324,8 +342,8 @@ def run_with_fallback(route, system, messages, files=(), thinking=False, max_tok
             return {"text": text, "model": model, "provider": provider, "sources": sources, "note": " ".join(notes)}
         except AIError as e:
             last = e
-            mark_down(provider)
-            why = str(e).replace(LABEL[provider], "").strip(" :.")[:90]
+            mark_down(provider, 3600 if BILLING.get(provider, 0) > time.time() else 300)
+            why = str(e).replace(LABEL[provider], "").strip(" :.")[:110]
             notes.append(f"{LABEL[provider]} failed ({why}).")
     raise AIError(str(last) if last else "No model could answer.")
 

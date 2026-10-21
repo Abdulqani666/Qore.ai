@@ -1093,15 +1093,42 @@ async function docxPictures(f){
   const rels=await z.file("word/_rels/document.xml.rels").async("string"),map={};
   for(const m of rels.matchAll(/<Relationship [^>]*>/g)){const id=(m[0].match(/Id="([^"]+)"/)||[])[1],t=(m[0].match(/Target="([^"]+)"/)||[])[1];if(id&&t&&/media\//.test(t))map[id]=t}
   const doc=new DOMParser().parseFromString(await z.file("word/document.xml").async("string"),"application/xml");
-  const out=[],seen=new Set();let last="";
-  for(const p of qa(doc,"p")){const t=qa(p,"t").map(x=>x.textContent).join("").trim();
-   for(const bl of Array.from(p.getElementsByTagName("*")).filter(e=>e.localName==="blip")){
-    const id=bl.getAttribute("r:embed"),tg=map[id];if(!tg)continue;const path="word/"+tg.replace(/^\/?(word\/)?/,""),fi=z.file(path);if(!fi)continue;
-    const ext=((path.match(/\.(\w+)$/)||[])[1]||"").toLowerCase();if(!["png","jpg","jpeg"].includes(ext))continue;if(/logo/i.test(path))continue;
-    const b64=await fi.async("base64");if(b64.length<4000||seen.has(b64))continue;seen.add(b64);
-    out.push({mime:ext==="png"?"image/png":"image/jpeg",b64,page:0,caption:"",ctx:t||last})}
-   if(t)last=t.slice(0,80)}
+  const paras=qa(doc,"p").map(p=>({p,t:qa(p,"t").map(x=>x.textContent).join("").trim()}));
+  const out=[],seen=new Set();
+  for(let pi=0;pi<paras.length;pi++){const{p,t}=paras[pi];
+   const ids=Array.from(p.getElementsByTagName("*")).filter(e=>e.localName==="blip"||e.localName==="imagedata").map(e=>e.getAttribute("r:embed")||e.getAttribute("r:id")).filter(Boolean);
+   for(const id of ids){const tg=map[id];if(!tg)continue;const path="word/"+tg.replace(/^\/?(word\/)?/,""),fi=z.file(path);if(!fi)continue;
+    const ext=((path.match(/\.(\w+)$/)||[])[1]||"").toLowerCase();if(/logo/i.test(path))continue;
+    if(!["png","jpg","jpeg","gif","bmp"].includes(ext))continue;
+    let b64=await fi.async("base64"),mime=ext==="png"?"image/png":ext==="gif"?"image/gif":ext==="bmp"?"image/bmp":"image/jpeg";
+    if(b64.length<4000||seen.has(b64))continue;seen.add(b64);
+    if(mime==="image/gif"||mime==="image/bmp"){try{const pb=await toPngBlob({b64,mime});b64=btoa(String.fromCharCode(...new Uint8Array(await pb.arrayBuffer())));mime="image/png"}catch(e){continue}}
+    let before=t,after="";if(!before){for(let k=pi-1;k>=0&&k>=pi-4;k--)if(paras[k].t){before=paras[k].t;break}}
+    for(let k=pi+(t?1:0);k<paras.length&&k<=pi+4;k++)if(paras[k].t){after=paras[k].t;break}
+    out.push({mime,b64,page:0,caption:"",ctx:(before||after).slice(0,80),before:before.slice(0,200),after:after.slice(0,200)})}}
   return out}catch(e){return[]}}
+const normK=s=>String(s||"").replace(/\*\*/g,"").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu," ").replace(/\s+/g," ").trim();
+function simK(a,b){if(!a||!b)return 0;const A=new Set(a.split(" ")),B=new Set(b.split(" "));let n=0;A.forEach(w=>{if(B.has(w))n++});return n/Math.max(1,Math.min(A.size,B.size))}
+function placeMissingPictures(md){
+ const total=PDFPICS.length;if(!total)return{md,placed:0,total:0};
+ const lines=md.split("\n"),used=new Set();
+ lines.forEach(l=>{const m=l.match(/\[\[\s*PICTURE\s*:\s*(?:pdf|pic)\s*:\s*(\d+)/i);if(m)used.add(+m[1])});
+ let placed=used.size;const ins=[];
+ PDFPICS.forEach((p,i)=>{if(used.has(i+1))return;
+  let at=-1,mode="after";
+  const cap=(p.caption||"").match(/^figure\s*(\d+)/i);
+  if(cap){const re=new RegExp("\\bfigure\\s*"+cap[1]+"\\b","i");const k=lines.findIndex((l,idx)=>re.test(l)&&!/\[\[/.test(l)&&idx>=0);if(k>=0){at=k;mode="before"}}
+  if(at<0&&(p.before||p.after)){
+   const kb=normK(p.before),ka=normK(p.after);let best=0;
+   lines.forEach((l,k)=>{if(!l.trim()||/^\s*(@|\[\[)/.test(l))return;const nl=normK(l.replace(/^\s*(#{1,6}|>|\d+[.)]|[A-Da-d][.)])\s*/,""));
+    const sb=simK(kb,nl),sa=simK(ka,nl);
+    if(sa>best&&sa>=0.6){best=sa;at=k;mode="before"}
+    if(sb>best&&sb>=0.6&&sb>=sa){best=sb;at=k;mode="after"}})}
+  if(at>=0)ins.push({at,mode,i})});
+ ins.sort((a,b)=>b.at-a.at||b.i-a.i).forEach(({at,mode,i})=>{const p=PDFPICS[i];const line=`[[PICTURE: pic:${i+1}${p.caption?" | "+p.caption:""}]]`;
+  if(mode==="before"){let k=at;while(k>0&&!lines[k-1].trim())k--;lines.splice(k,0,line)}
+  else lines.splice(at+1,0,line);placed++});
+ return{md:lines.join("\n"),placed,total}}
 async function makeFigure(q,cap){
  const mp=String(q).trim().match(/^(?:pdf|pic):\s*(\d+)$/i);
  if(mp){const p=PDFPICS[+mp[1]-1];if(!p)return null;const f=await composeFigure(new Blob([b64bytes(p.b64)],{type:p.mime}),cap);return f?{...f,credit:""}:null}
@@ -1184,11 +1211,12 @@ function foot(r){
  if(r.sources&&r.sources.length)h+=`<p class="src">Sources: `+r.sources.filter(s=>safeUrl(s.url)).map(s=>`<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")+`</p>`;
  return h}
 async function docResult(r,t){
+ const pm=(r.cmd==="exam"||r.cmd==="worksheet")?placeMissingPictures(r.text):{md:r.text,placed:0,total:0};r={...r,text:pm.md};
  const{bytes,meta}=await mdToDocx(r.text);
  const{data}=await buildFrom(bytes,designFor(r.cmd,meta));
  const name=slug(meta.title||r.cmd)+".docx";
  lastDoc={md:r.text,meta,cmd:r.cmd};lastKind="doc";
- t.innerHTML=`<p>Your document is ready.</p>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="view">Preview</button><button class="btn" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Download PDF</button><button class="btn" data-a="chg">Change it</button>${r.cmd==="exam"?'<button class="btn" data-a="key">Make marking scheme</button>':""}<button class="btn" data-a="txt">Show text</button></div>`+foot(r);
+ t.innerHTML=`<p>Your document is ready.${pm.total?` ${pm.placed} of ${pm.total} picture${pm.total===1?"":"s"} from your source ${pm.placed===1?"is":"are"} in it.`:""}</p>${fcard(name,size(data.length),"DOCX")}<div class="acts"><button class="btn pri" data-a="view">Preview</button><button class="btn" data-a="docx">Download Word</button><button class="btn" data-a="pdf">Download PDF</button><button class="btn" data-a="chg">Change it</button>${r.cmd==="exam"?'<button class="btn" data-a="key">Make marking scheme</button>':""}<button class="btn" data-a="txt">Show text</button></div>`+foot(r);
  const q=a=>t.querySelector(`[data-a=${a}]`);
  q("view").onclick=()=>openPreview(name,data);
  q("docx").onclick=()=>saveBytes(name,data,WORDMIME);
